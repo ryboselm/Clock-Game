@@ -261,7 +261,6 @@ class  clockGame():
         if self.use_gui:
             self.clockapp_instance["scores"] = self.scores
         if self.use_gui:
-            print(self.clockapp_instance["game_actions"])
             with open("clock_gui.pkl", "wb") as f:
                 pkl.dump(self.clockapp_instance, f)
             #print(self.clockapp_instance['game_actions'])

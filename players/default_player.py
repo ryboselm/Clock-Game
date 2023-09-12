@@ -58,7 +58,7 @@ class Player:
         print(territory)
         letter = self.rng.choice(cards)
         territory_array = np.array(territory)
-        available_hours = np.where(territory_array == 3)
+        available_hours = np.where(territory_array == 4)
         hour = self.rng.choice(available_hours[0])          #because np.where returns a tuple containing the array, not the array itself
         hour = hour%12 if hour%12!=0 else 12
         return hour, letter
