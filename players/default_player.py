@@ -1,9 +1,5 @@
-import os
-import pickle
 from tokenize import String
 import numpy as np
-import sympy
-import logging
 from typing import Tuple, List
 
 class Player:
@@ -31,7 +27,7 @@ class Player:
             constraints(list(str)): The total constraints assigned to the given player in the format ["A<B<V","S<D","F<G<A"].
 
         Returns:
-            list[int]: Return the indices of constraint cards that you wish to keep.
+            list[int]: Return the list of constraint cards that you wish to keep. (can look at the default player logic to understand.)
         """
         final_constraints = []
         #print(constraints)
@@ -51,11 +47,11 @@ class Player:
             score (int): Your total score including current turn
             cards (list): A list of letters you have been given at the beginning of the game
             state (list(list)): The current letters at every hour of the 24 hour clock
-            territory (list(int)): The current occupiers of every slot in the 24 hour clock
+            territory (list(int)): The current occupiers of every slot in the 24 hour clock. 1,2,3 for players 1,2 and 3. 4 if position unoccupied.
             constraints(list(str)): The constraints assigned to the given player
 
         Returns:
-            Tuple[int, str]: Return a tuple of slot from 0-23 and letter to be played at that slot
+            Tuple[int, str]: Return a tuple of slot from 1-12 and letter to be played at that slot
         """
         #Do we want intermediate scores also available? Confirm pls
         print(state)
@@ -64,4 +60,5 @@ class Player:
         territory_array = np.array(territory)
         available_hours = np.where(territory_array == 3)
         hour = self.rng.choice(available_hours[0])          #because np.where returns a tuple containing the array, not the array itself
+        hour = hour%12 if hour%12!=0 else 12
         return hour, letter

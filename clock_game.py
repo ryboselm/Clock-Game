@@ -284,13 +284,14 @@ class  clockGame():
         if len(self.state_history) == 0:
             self.start_time = time.time()
         if not self.constraints_inputted[player_number]:
-            choose_start = float(time.time())
+            choose_start = float(time.time())  
             self.constraints[player_number] = self.player_instances[player_number].choose_discard(self.options_letter[player_number],self.constraints[player_number])
             choose_end = float(time.time())
             self.time_choose[player_number] = choose_end - choose_start
             self.constraints_inputted[player_number] = True
         start_play = float(time.time())
-        hour_student, letter = self.player_instances[player_number].play(self.options_letter[player_number], self.constraints[player_number], self.curr_state, self.curr_territory)
+        current_territory = [x+1 for x in self.curr_territory]
+        hour_student, letter = self.player_instances[player_number].play(self.options_letter[player_number], self.constraints[player_number], self.curr_state, current_territory)
         end_play = float(time.time())
         self.time_move_start.append(start_play)
         self.time_move_end.append(end_play)
@@ -542,7 +543,8 @@ class  clockGame():
                 self.counter = 1
                 
                 start_play = float(time.time())
-                hour, letter = self.player_instances[0].play(self.options_letter[0], self.constraints[0], self.curr_state, self.curr_territory)
+                current_territory = [x+1 for x in self.curr_territory]
+                hour, letter = self.player_instances[0].play(self.options_letter[0], self.constraints[0], self.curr_state, current_territory)
                 end_play = float(time.time())
                 self.time_move_start.append(start_play)
                 self.time_move_end.append(end_play)
@@ -559,7 +561,8 @@ class  clockGame():
                 self.add_to_log(0, letter, hour)
                 
                 start_play = float(time.time())
-                hour, letter = self.player_instances[1].play(self.options_letter[1], self.constraints[1], self.curr_state, self.curr_territory)
+                current_territory = [x+1 for x in self.curr_territory]
+                hour, letter = self.player_instances[1].play(self.options_letter[1], self.constraints[1], self.curr_state, current_territory)
                 end_play = float(time.time())
                 self.time_move_start.append(start_play)
                 self.time_move_end.append(end_play)
@@ -576,7 +579,8 @@ class  clockGame():
                 self.add_to_log(1, letter, hour)
                 
                 start_play = float(time.time())
-                hour, letter = self.player_instances[2].play(self.options_letter[2], self.constraints[2], self.curr_state, self.curr_territory)
+                current_territory = [x+1 for x in self.curr_territory]
+                hour, letter = self.player_instances[2].play(self.options_letter[2], self.constraints[2], self.curr_state, current_territory)
                 end_play = float(time.time())
                 self.time_move_start.append(start_play)
                 self.time_move_end.append(end_play)
