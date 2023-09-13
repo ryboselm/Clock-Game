@@ -24,9 +24,9 @@ import argparse
 
 class  clockGame():
     #def __init__(self, args):
-    def __init__(self):
+    def __init__(self, args):
         self.use_gui = True
-        self.rng = np.random.default_rng(constants.rng_seed)
+        self.rng = np.random.default_rng(int(args.seed))
         self.max_time = constants.timeout
         with open("log_moves.txt", 'w' ) as f:
             f.write("The game.....has started.")
@@ -622,7 +622,8 @@ class  clockGame():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--no_gui", "-ng", default = False, help="Disable GUI")
+    parser.add_argument("--seed", "-s", default = 5, help="Choose seed number")
     args = parser.parse_args()
-    instance_clockgame = clockGame()
+    instance_clockgame = clockGame(args)
     instance_clockgame.use_gui = not args.no_gui
     instance_clockgame.run_game()

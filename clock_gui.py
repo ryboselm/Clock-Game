@@ -12,6 +12,7 @@ import string
 from functools import reduce
 import time
 import copy
+import argparse
 
 canvas_global = None            #Because I cannot pickle this otherwise and multithreading in tkinter is a huge pain.
 image_global = None                #Have made all tkinter objects global
@@ -36,9 +37,9 @@ player_three_global = None
 
 
 class gui():
-    def __init__(self):
+    def __init__(self, args):
         self.use_gui = True
-        self.rng = np.random.default_rng(constants.rng_seed)
+        self.rng = np.random.default_rng(int(args.seed))
         self.no_of_constraints = constants.number_of_constraints_pp
         
         self.x=250	# Center Point x
@@ -577,7 +578,10 @@ class gui():
 
 # Main Function Trigger
 if __name__ == '__main__':
-    instance = gui()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--seed", "-s", default = 5, help="Choose seed number")
+    args = parser.parse_args()
+    instance = gui(args)
     my_dict = instance.convert_to_dict()
     with open("clock_gui.pkl", "wb") as f:
         pkl.dump(my_dict, f)
