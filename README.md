@@ -47,7 +47,8 @@ bash clock_game.sh False seed_number
 
 Simulator Scheme : Player 1 always plays in black, player 2 always plays in blue, and player 3 always plays in red.
 All entries in the clock will be masked if a player has not chosen their constraints yet.
-If you do not specify the seed number as an integer, it will fall to the default, which is seed 5.
+
+If you decide to end the simulator prematurely, press Control+D to terminate the bash script and then run your next command.
 
 ### Running without Simulator
 
