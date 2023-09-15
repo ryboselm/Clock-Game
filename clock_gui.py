@@ -76,6 +76,8 @@ class gui():
         self.player_0 = None
         self.player_1 = None
         self.player_2 = None
+
+        self.constraints_choosing_over = False
         
         for j in range(3):
             constraint_counter = 0
@@ -158,6 +160,8 @@ class gui():
         player_name[0] = "Default Player" if self.player_0 == 0 else "Team "+str(self.player_0)
         player_name[1] = "Default Player" if self.player_1 == 0 else "Team "+str(self.player_1)
         player_name[2] = "Default Player" if self.player_2 == 0 else "Team "+str(self.player_2)
+        for indic_custom in self.custom_players:
+            player_name[indic_custom] = "Custom Player"
         
         discarded_constraints = copy.deepcopy(self.initial_constraints)         #Since there is no variable for discarded constraints and initial constraints were too long for the table
         for i_con in range(3):
@@ -229,6 +233,8 @@ class gui():
         my_dict['initial_constraints'] = self.initial_constraints
         my_dict['unsatisfied_constraints'] = self.unsatisfied_constraints
         my_dict['constraints_after_discarding'] = self.constraints_after_discarding
+        my_dict['constraints_choosing_over'] = self.constraints_choosing_over
+
         return(my_dict)
 
     def update_variables(self):     #Update all the variables that were changed in the backend (clock_game.py)
@@ -260,7 +266,14 @@ class gui():
         self.initial_constraints = my_dict['initial_constraints']
         self.unsatisfied_constraints = my_dict['unsatisfied_constraints']
         self.constraints_after_discarding = my_dict['constraints_after_discarding']
+        self.constraints_choosing_over = my_dict['constraints_choosing_over']
 
+
+    
+
+
+
+    
     def start_game(self):
         global root_global
         global image_global
@@ -278,12 +291,9 @@ class gui():
         global player_one_global
         global player_two_global
         global player_three_global
-     
         self.update_indicator = 1
-        
-        
+
         if self.status_indicator == "start":
-            self.show_count = self.show_count + 1
             
             player_0_type = player_0_global.get() #Assigning the types of players 1, 2 and 3
             player_1_type = player_1_global.get()
@@ -330,64 +340,125 @@ class gui():
                 button = Button( root_global , text = "See results" , command = self.draw_table )
                 button.place(x=123, y=20)
 
-                
-
             else:
-                index = (self.show_count % len(self.custom_players))-1
-                if index <0:
-                    index = index + len(self.custom_players)
-                current_player = self.custom_players[index]
+                if len(self.custom_players) == 1:
+                    button_global.destroy()
+                    player_one_global.destroy()
+                    player_two_global.destroy()
+                    player_three_global.destroy()
+                    button_global = Button( root_global , text = "Choose last constraint" , command = self.show)
+                    button_global.place(x=123, y=20)
+                    listbox_global = Listbox(root_global, selectmode = "multiple")
+                    # Widget expands horizontally and vertically by assigning as both
+                    listbox_global.pack(expand = YES, fill = "both")
+                    for each_item in range(len(self.constraints[self.custom_players[0]])):
+                        listbox_global.insert(END, self.constraints[self.custom_players[0]][each_item])
+                        listbox_global.itemconfig(each_item)
+                    self.is_listbox = True
+                    self.player_indic[self.custom_players[0]] = "in_progress"
+                    label_global.config( text = "It's your chance player "+str(self.custom_players[0]+1))
+                else:
+                    button_global.destroy()
+                    player_one_global.destroy()
+                    player_two_global.destroy()
+                    player_three_global.destroy()
+                    button_global = Button( root_global , text = "Choose constraints" , command = self.choosing_cards )
+                    button_global.place(x=123, y=20)
+                    listbox_global = Listbox(root_global, selectmode = "multiple")
+                    # Widget expands horizontally and vertically by assigning as both
+                    listbox_global.pack(expand = YES, fill = "both")
+                    for each_item in range(len(self.constraints[self.custom_players[0]])):
+                        listbox_global.insert(END, self.constraints[self.custom_players[0]][each_item])
+                        listbox_global.itemconfig(each_item)
+                    self.is_listbox = True
+                    self.player_indic[self.custom_players[0]] = "in_progress"
+                    label_global.config( text = "It's your chance player "+str(self.custom_players[0]+1))
 
-                player_one_global.destroy()
-                player_two_global.destroy()
-                player_three_global.destroy()
-
-
-                listbox_global = Listbox(root_global, selectmode = "multiple")
-                # Widget expands horizontally and vertically by assigning as both
-                listbox_global.pack(expand = YES, fill = "both")
-                for each_item in range(len(self.constraints[current_player])):
-                    listbox_global.insert(END, self.constraints[current_player][each_item])
-                    listbox_global.itemconfig(each_item)
-                self.is_listbox = True
-                self.player_indic[current_player] = "in_progress"
-                
-                button_global.destroy()
-                button_global = Button( root_global , text = "Play" , command = self.show )
-                button_global.place(x=123, y=20)
-                label_global.config( text = "It's your chance player "+str(current_player+1))
-                clicked_letter_global.set( "Choose your letter" )
-                clicked_hour_global.set( "Choose your hour" )
-                drop_letter_global = OptionMenu( root_global , clicked_letter_global , *self.options_letter[current_player] )
-                drop_letter_global.pack()
-                #drop_hour_global = OptionMenu( root_global , clicked_hour_global , *self.options_hour )
-                display_hour = []
-                indicator_12 = 0
-                for i in range(12):     #To convert the 1-12 entered by the student into the 0-23 form in my options_hour data structure.
-                    if i in self.options_hour:
-                        #self.chosen_hour_indicator[i] = 0
-                        if i!=0:
-                            display_hour.append(i)
-                        else:
-                            indicator_12 = 1
-                    elif i+12 in self.options_hour:
-                        #self.chosen_hour_indicator[i] = 1
-                        if i!=0:
-                            display_hour.append(i)
-                        else:
-                            indicator_12 = 1
-                    #else:
-                        #self.chosen_hour_indicator[i] = 3
-                if indicator_12 == 1:
-                    display_hour.append(12)
-                drop_hour_global = OptionMenu( root_global , clicked_hour_global , *display_hour )      #Since we want only 1 to 12 to be options
-                drop_hour_global.pack() 
-                self.status_indicator = "in_progress"
 
 
             my_dict = self.convert_to_dict()
             with open("clock_gui.pkl", "wb") as f:
                 pkl.dump(my_dict, f)
+
+
+    def choosing_cards(self):
+        global root_global
+        global image_global
+        global canvas_global
+        global button_global
+        global label_global
+        global drop_letter_global
+        global drop_hour_global
+        global player_0_global
+        global player_1_global
+        global player_2_global
+        global listbox_global
+        global clicked_letter_global
+        global clicked_hour_global
+        global player_one_global
+        global player_two_global
+        global player_three_global
+        #Will use self.show_count first only for choosing the chosen cards count
+        
+
+        index = (self.show_count % len(self.custom_players))
+        if index <0:
+            index = index + len(self.custom_players)
+        self.show_count = self.show_count + 1
+        current_player = self.custom_players[index]
+
+        if player_one_global != None: #or if index == 0 (first constraints being chosen)
+            player_one_global.destroy()
+            player_two_global.destroy()
+            player_three_global.destroy()
+        button_global.destroy()
+        
+        if self.is_listbox:
+            self.constraints[current_player] = []
+            for i in listbox_global.curselection():
+                self.constraints[current_player].append(listbox_global.get(i))
+            listbox_global.destroy()
+            self.is_listbox = False
+            my_dict = self.convert_to_dict()
+            with open("clock_gui.pkl", "wb") as f:
+                pkl.dump(my_dict, f)
+
+        
+
+        
+        next_player = self.custom_players[((self.show_count) % len(self.custom_players))]
+        button_global.destroy()
+        if next_player != self.custom_players[-1]:
+            button_global = Button( root_global , text = "Choose constraints" , command = self.choosing_cards )
+            button_global.place(x=123, y=20)
+            label_global.config( text = "It's your chance player "+str(next_player+1))
+            #drop_hour_global = OptionMenu( root_global , clicked_hour_global , *self.options_hour )
+            self.status_indicator = "in_progress"
+            listbox_global = Listbox(root_global, selectmode = "multiple")
+            # Widget expands horizontally and vertically by assigning as both
+            listbox_global.pack(expand = YES, fill = "both")
+            for each_item in range(len(self.constraints[next_player])):
+                listbox_global.insert(END, self.constraints[next_player][each_item])
+                listbox_global.itemconfig(each_item)
+            self.is_listbox = True
+            self.player_indic[next_player] = "in_progress"
+        else:
+            button_global = Button( root_global , text = "Choose last constraint" , command = self.show )
+            button_global.place(x=123, y=20)
+            label_global.config( text = "It's your chance player "+str(next_player+1))
+            self.status_indicator = "in_progress"
+            self.show_count = 0
+            listbox_global = Listbox(root_global, selectmode = "multiple")
+            listbox_global.pack(expand = YES, fill = "both")
+            for each_item in range(len(self.constraints[next_player])):
+                listbox_global.insert(END, self.constraints[next_player][each_item])
+                listbox_global.itemconfig(each_item)
+            self.is_listbox = True
+            self.player_indic[next_player] = "in_progress"
+            my_dict = self.convert_to_dict()
+            with open("clock_gui.pkl", "wb") as f:
+                pkl.dump(my_dict, f)
+
 
     def show(self):
         global root_global
@@ -407,61 +478,62 @@ class gui():
         global player_two_global
         global player_three_global
         
+        
         self.update_indicator = 2
+        button_global.destroy()
         my_dict = self.convert_to_dict()
-        index = (self.show_count % len(self.custom_players))-1
-        if index <0:
-            index = index + len(self.custom_players)
-        current_player = self.custom_players[index]
+        
+        
+        
         if self.is_listbox:
+            current_player = self.custom_players[-1]%3
+            next_player = self.custom_players[0]%3
             self.constraints[current_player] = []
             for i in listbox_global.curselection():
                 self.constraints[current_player].append(listbox_global.get(i))
             listbox_global.destroy()
             self.is_listbox = False
-        letter = clicked_letter_global.get()
-        hour = int(clicked_hour_global.get())
-        if hour%12 in self.options_hour:
-            if hour == 12:
-                hour = 0
-            else:
-                hour = hour
-        elif hour%12 + 12 in self.options_hour:
-            if hour == 12:
-                hour = 12
-            else:
-                hour = hour + 12 
-        self.game_actions.append([letter, int(hour)])
-        self.hours[current_player].append(hour)
-        self.letters_played[current_player].append(letter)
-        self.options_letter[current_player].remove(letter)          #actions for old player
-        self.options_hour.remove(int(hour))
-        #Adding the selection to the clock
+            self.show_count = -1
 
+        else:
+            current_player = self.custom_players[self.show_count%len(self.custom_players)]
+            next_player = self.custom_players[(self.show_count+1)%len(self.custom_players)]
+            self.constraints_choosing_over = True
+            letter = clicked_letter_global.get()
+            hour = int(clicked_hour_global.get())
+            if hour%12 in self.options_hour:
+                if hour == 12:
+                    hour = 0
+                else:
+                    hour = hour
+            elif hour%12 + 12 in self.options_hour:
+                if hour == 12:
+                    hour = 12
+                else:
+                    hour = hour + 12 
+            self.game_actions.append([letter, int(hour)])
+            self.hours[current_player].append(hour)
+            self.letters_played[current_player].append(letter)
+            self.options_letter[current_player].remove(letter)          #actions for old player
+            self.options_hour.remove(int(hour))
+            drop_hour_global.destroy()
+            drop_letter_global.destroy()
+            #Adding the selection to the clock
+
+        self.show_count = self.show_count + 1
+        my_dict = self.convert_to_dict()
         with open("clock_gui.pkl", "wb") as f:
             pkl.dump(my_dict, f)
         time.sleep(1.2)
         self.update_variables()
         
-        if len(self.game_actions) >= 3:
-            for i_actions in self.game_actions:
-                self.draw_letter(i_actions[0], i_actions[1], self.game_actions.index(i_actions)%3)
-        self.show_count = self.show_count + 1
         
-        index = (self.show_count % len(self.custom_players))-1      #New current player
-        if index <0:
-            index = index + len(self.custom_players)
-        current_player = self.custom_players[index]
-        if self.player_indic[current_player] == "start":
-            listbox_global = Listbox(root_global, selectmode = "multiple")
-            # Widget expands horizontally and vertically by assigning as both
-            listbox_global.pack(expand = YES, fill = "both")
-            for each_item in range(len(self.constraints[current_player])):
-                listbox_global.insert(END, self.constraints[current_player][each_item])
-                listbox_global.itemconfig(each_item)
-            self.is_listbox = True
-            self.player_indic[current_player] = "in_progress"
-
+        
+        for i_actions in self.game_actions:
+            self.draw_letter(i_actions[0], i_actions[1], self.game_actions.index(i_actions)%3)
+        
+        
+        
         sum_of_custom_letters_left = 0
         for j in self.custom_players:
             sum_of_custom_letters_left = sum_of_custom_letters_left + len(self.options_letter[j])
@@ -472,21 +544,19 @@ class gui():
             self.update_variables()
             label_global.config( text = "Game Over, click above to see results!!")
             #Display the scores result table here
-            drop_hour_global.destroy()
-            drop_letter_global.destroy()
             button = Button( root_global , text = "See results" , command = self.draw_table )
             button.place(x=123, y=20)
         else:
-            constraints_string = str(reduce(lambda x, y: str(x) + ", " + str(y), self.constraints[current_player]))           #to display the constraints for every player
-            label_global.config( text = "It's your chance player "+str(current_player+1)+" with constraints "+constraints_string) #+ clicked_letter_global.get() + " at position " + clicked_hour_global.get())
-            drop_hour_global.destroy()
-            drop_letter_global.destroy()
+            constraints_string = str(reduce(lambda x, y: str(x) + ", " + str(y), self.constraints[next_player]))           #to display the constraints for every player
+            label_global.config( text = "It's your chance player "+str(next_player+1)+" with constraints "+constraints_string) #+ clicked_letter_global.get() + " at position " + clicked_hour_global.get())
             clicked_letter_global.set( "Choose your letter" )
             clicked_hour_global.set( "Choose your hour" )
-            drop_letter_global = OptionMenu( root_global , clicked_letter_global , *self.options_letter[current_player] )
+            drop_letter_global = OptionMenu( root_global , clicked_letter_global , *self.options_letter[next_player] )
             drop_letter_global.pack()
             display_hour = []
             indicator_12 = 0
+            button = Button( root_global , text = "Play" , command = self.show )
+            button.place(x=123, y=20)
 
             for i in range(12):     #To see which positions are available in the clock from 1 to 12. Since in my own data structure it is stored as 0 to 23.
                 if i in self.options_hour:
@@ -509,7 +579,6 @@ class gui():
             drop_hour_global = OptionMenu( root_global , clicked_hour_global , *display_hour )
             drop_hour_global.pack() 
         self.constraints_after_discarding = copy.deepcopy(self.constraints)
-        #self.update_indicator = 2
         my_dict = self.convert_to_dict()
         with open("clock_gui.pkl", "wb") as f:
             pkl.dump(my_dict, f)
@@ -568,6 +637,8 @@ class gui():
         # Create button, it will change label text
         button_global = Button( root_global , text = "Start Game" , command = self.start_game )
         button_global.place(x=123, y=20)
+
+        listbox_global = Listbox(root_global, selectmode = "multiple")
 
         root_global.mainloop()
     
