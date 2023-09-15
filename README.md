@@ -42,7 +42,7 @@ pip install -r requirements.txt
 ### Simulator
 
 ```bash
-bash clock_game.sh seed_number
+bash clock_game.sh False seed_number
 ```
 
 Simulator Scheme : Player 1 always plays in black, player 2 always plays in blue, and player 3 always plays in red.
