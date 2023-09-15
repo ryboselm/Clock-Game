@@ -356,7 +356,7 @@ class gui():
                         listbox_global.itemconfig(each_item)
                     self.is_listbox = True
                     self.player_indic[self.custom_players[0]] = "in_progress"
-                    label_global.config( text = "It's your chance player "+str(self.custom_players[0]+1))
+                    label_global.config( text = "It's your chance player "+str(self.custom_players[0]+1)+ " with letters "+str(self.options_letter[self.custom_players[0]]))
                 else:
                     button_global.destroy()
                     player_one_global.destroy()
@@ -372,7 +372,7 @@ class gui():
                         listbox_global.itemconfig(each_item)
                     self.is_listbox = True
                     self.player_indic[self.custom_players[0]] = "in_progress"
-                    label_global.config( text = "It's your chance player "+str(self.custom_players[0]+1))
+                    label_global.config( text = "It's your chance player "+str(self.custom_players[0]+1)+ " with letters "+str(self.options_letter[self.custom_players[0]]))
 
 
 
@@ -431,7 +431,7 @@ class gui():
         if next_player != self.custom_players[-1]:
             button_global = Button( root_global , text = "Choose constraints" , command = self.choosing_cards )
             button_global.place(x=123, y=20)
-            label_global.config( text = "It's your chance player "+str(next_player+1))
+            label_global.config( text = "It's your chance player "+str(next_player+1)+ " with letters "+str(self.options_letter[next_player]))
             #drop_hour_global = OptionMenu( root_global , clicked_hour_global , *self.options_hour )
             self.status_indicator = "in_progress"
             listbox_global = Listbox(root_global, selectmode = "multiple")
@@ -445,7 +445,7 @@ class gui():
         else:
             button_global = Button( root_global , text = "Choose last constraint" , command = self.show )
             button_global.place(x=123, y=20)
-            label_global.config( text = "It's your chance player "+str(next_player+1))
+            label_global.config( text = "It's your chance player "+str(next_player+1)+ " with letters "+str(self.options_letter[next_player]))
             self.status_indicator = "in_progress"
             self.show_count = 0
             listbox_global = Listbox(root_global, selectmode = "multiple")
