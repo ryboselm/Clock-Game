@@ -54,8 +54,7 @@ class Player:
             Tuple[int, str]: Return a tuple of slot from 1-12 and letter to be played at that slot
         """
         #Do we want intermediate scores also available? Confirm pls
-        print(state)
-        print(territory)
+        
         letter = self.rng.choice(cards)
         territory_array = np.array(territory)
         available_hours = np.where(territory_array == 4)
