@@ -7,7 +7,7 @@ import constants
 from players.default_player import Player as Default_Player
 #have to change inheritance for all of these
 from players.p1 import Player as p1
-from players.default_player import Player as p2
+from players.p2 import Player as p2
 from players.default_player import Player as p3
 from players.default_player import Player as p4
 from players.default_player import Player as p5
