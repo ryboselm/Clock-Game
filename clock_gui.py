@@ -175,8 +175,18 @@ class gui():
                 (3,'Player 3', player_name[2], self.scores[2], ", ".join([str(ele) for ele in self.satisfied_constraints[2]]), ", ".join([str(ele) for ele in self.unsatisfied_constraints[2]]), ", ".join([str(ele) for ele in discarded_constraints[2]]))]
         for i in range(4):
             for j in range(7):
-                self.e = Entry(root_global, width=30, fg='blue',
-                               font=('Arial',16,'bold'))
+                if i==1:
+                    self.e = Entry(root_global, width=30, fg='black',
+                                font=('Arial',16,'bold'))
+                elif i==2:
+                    self.e = Entry(root_global, width=30, fg='blue',
+                                font=('Arial',16,'bold'))
+                elif i==3:
+                    self.e = Entry(root_global, width=30, fg='red',
+                                font=('Arial',16,'bold'))
+                else:
+                    self.e = Entry(root_global, width=30, fg='black',
+                                font=('Arial',16,'bold'))
                 self.e.grid(row=i, column=j)
                 self.e.insert(END, list_scores[i][j])
         button_global = Button( root_global , text = "Exit App" , command = self.end_run )
@@ -332,7 +342,7 @@ class gui():
                 player_three_global.destroy()
 
                 for i_auto in range(24):
-                    time.sleep(0.08)
+                    time.sleep(0.5)
                     label_global.config( text = "Game simulation has run! Click above to see results!")
                 self.update_variables()
                 for i_actions in self.game_actions:

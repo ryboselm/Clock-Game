@@ -57,3 +57,10 @@ bash clock_game.sh True seed_number
 ```
 
 You can change the random seed, number of constraints per player and timeout by changing the values inside constants.py.
+
+
+
+
+
+The final result and log files should look as shown in the file "Result_example.png".
+

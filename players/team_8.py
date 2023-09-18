@@ -185,7 +185,7 @@ class Player:
 
         return tree
 
-    def __MCTS(self, cards: list[str], constraints: list[str], state: list[str], rollouts: int = 10000):
+    def __MCTS(self, cards: list[str], constraints: list[str], state: list[str], rollouts: int = 1000):
         # MCTS main loop: Execute MCTS steps rollouts number of times
         # Then return successor with highest number of rollouts
         tree = Tree(Node(np.array(state), None, [], 24, 'Z', 0, 1))
