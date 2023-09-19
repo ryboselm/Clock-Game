@@ -10,25 +10,20 @@ from typing import Tuple, List
 @dataclass
 class Node:
     state: npt.ArrayLike
-    parent: "Node"
-    children: list["Node"]
     hour: int
     letter: str
     score: int = 0
     N: int = 0
 
-
 class Tree:
     def __init__(self, root: "Node"):
         self.root = root
+        self.root.children = []
         self.nodes = {root.state.tobytes(): root}
-        self.size = 1
 
     def add(self, node: "Node"):
         self.nodes[node.state.tobytes()] = node
-        parent = node.parent
-        parent.children.append(node)
-        self.size += 1
+        self.root.children.append(node)
 
     def get(self, state: list[str]):
         flat_state = state.tobytes()
@@ -151,8 +146,7 @@ class Player:
                     # if both slots of hour already occupied, continue
                     continue
                 hour = 12 if i == 0 else i
-                tree.add(Node(np.array(new_state),
-                         tree.root, [], hour, letter, 0, 1))
+                tree.add(Node(np.array(new_state), hour, letter, 0, 1))
         return tree
 
     def __simulate(self, tree: "Tree", state: npt.ArrayLike, constraints: list[str], remaining_cards: list[str]):
@@ -185,10 +179,10 @@ class Player:
 
         return tree
 
-    def __MCTS(self, cards: list[str], constraints: list[str], state: list[str], rollouts: int = 10000):
+    def __MCTS(self, cards: list[str], constraints: list[str], state: list[str], rollouts: int = 5000):
         # MCTS main loop: Execute MCTS steps rollouts number of times
         # Then return successor with highest number of rollouts
-        tree = Tree(Node(np.array(state), None, [], 24, 'Z', 0, 1))
+        tree = Tree(Node(np.array(state), 24, 'Z', 0, 1))
         tree = self.__expand(tree, cards, state)
         shuffled_letters = list(self.rng.choice(
             list(string.ascii_uppercase)[:24], 24, replace=False))
