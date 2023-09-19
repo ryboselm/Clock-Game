@@ -54,6 +54,8 @@ class Player:
         """
         final_constraints = []
 
+        # TODO: resolve conflicting constraints
+
         for constraint in constraints:
             lst = constraint.split("<")
             letters_in_constraint = set(lst)
