@@ -26,7 +26,7 @@ class Tree:
         self.nodes[node.state.tobytes()] = node
         self.root.children.append(node)
 
-    def get(self, state: list[str]):
+    def get(self, state: npt.ArrayLike):
         flat_state = state.tobytes()
         if flat_state not in self.nodes:
             return None
@@ -218,7 +218,7 @@ class Player:
                 possible_letters.remove(letter)
 
         for i in range(rollouts):
-            available_letters = copy.deepcopy(possible_letters)
+            available_letters = possible_letters.copy()
             move = self.__select(tree, state)
             available_letters.remove(move.letter)
             tree = self.__simulate(
