@@ -212,14 +212,13 @@ class Player:
         # Then return successor with highest number of rollouts
         tree = Tree(Node(np.array(state), 24, 'Z', 0, 1))
         tree = self.__expand(tree, cards, state)
-        shuffled_letters = list(self.rng.choice(
-            list(string.ascii_uppercase)[:24], 24, replace=False))
+        possible_letters = list(string.ascii_uppercase)[:24]
         for letter in state:
             if letter != 'Z':
-                shuffled_letters.remove(letter)
+                possible_letters.remove(letter)
 
         for i in range(rollouts):
-            available_letters = shuffled_letters.copy()
+            available_letters = copy.deepcopy(possible_letters)
             move = self.__select(tree, state)
             available_letters.remove(move.letter)
             tree = self.__simulate(
