@@ -45,8 +45,8 @@ class Player:
             list[int]: Return the list of constraint cards that you wish to keep. (can look at the default player logic to understand.)
         """
         final_constraints = []
-        # print("Constraints given to us:", constraints)
-        # print("Cards given to us:", cards)
+        print("Constraints given to us:", constraints)
+        print("Cards given to us:", cards)
 
 
         def assign_score_to_const(_constraint, _cards):
@@ -62,14 +62,14 @@ class Player:
             """
 
             # A dict keeping hardcoded probabilities for the three cases of two letter constraints
-            two_letter_probs = {0: 0.43478260869, 1: 0.75, 2: 1}
+            two_letter_probs = {0: 0.43478260869, 1: 0.58, 2: 1}
 
             # Points associated with each constraint size
             points_for_consts = {2: 1, 3: 3, 4: 6, 5: 12}
 
-            # print("Current constraint:", _constraint)
+            print("Current constraint:", _constraint)
             lst_constraint = self.constraint_parser(_constraint)
-            # print("List format constraint:", lst_constraint)
+            print("List format constraint:", lst_constraint)
 
             score = 1
             for i in range(len(lst_constraint) - 1):
@@ -88,13 +88,13 @@ class Player:
         # loop over all the constraints
         for curr_const in constraints:
             curr_const_score = (assign_score_to_const(curr_const, cards))
-            # print("Score assigned to current constraint is", curr_const_score)
+            print("Score assigned to current constraint is", curr_const_score)
             if curr_const_score  >= 0:
                 final_constraints.append(curr_const)
 
         self.curr_constraint_tally = {const: False for const in final_constraints}
 
-        # print("Final selected constraints:", final_constraints)
+        print("Final selected constraints:", final_constraints)
         return final_constraints
 
     def is_2_const_satisfied(self, _two_const, _state):
@@ -217,11 +217,11 @@ class Player:
         """
         # Do we want intermediate scores also available? Confirm pls
         
-        # print("\n***\n")
+        print("\n***\n")
         
-        #print("State: ", state)
-        #print("Territory: ", territory)
-        # print("Current Constraint Tally", self.curr_constraint_tally)
+        print("State: ", state)
+        print("Territory: ", territory)
+        print("Current Constraint Tally", self.curr_constraint_tally)
 
         max_iter = 1000
         for i in range(max_iter):
@@ -236,7 +236,7 @@ class Player:
             if is_satisfied == 1:
                 break
         
-        # print("~~~~~~~~~~~Is Satisfied: ", is_satisfied, "~~~~~~~~~~~~~~~")
+        print("~~~~~~~~~~~Is Satisfied: ", is_satisfied, "~~~~~~~~~~~~~~~")
 
         hour = hour % 12 if hour % 12 != 0 else 12
         return hour, letter

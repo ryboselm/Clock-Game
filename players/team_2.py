@@ -49,10 +49,91 @@ class Player:
         Returns:
             Tuple[int, str]: Return a tuple of slot from 1-12 and letter to be played at that slot
         """
+
+        # Implemented Part 1
+        discard = []
+        useful = []
         
-        letter = self.rng.choice(cards)
+        allconstraints = ""
+        for constraint in constraints:
+            allconstraints += constraint
+
+        for letter in cards:
+            if letter in allconstraints:
+                useful.append(letter)
+            else:
+                discard.append(letter)
+        
+        print('state:', state)
+        print('territory:', territory)
+
+        # Implemented Part 2
+        chosen_hour = chosen_letter = None
+        for constraint in sorted(map(lambda c: c.split('<'), constraints), key=len, reverse=True):
+            repr = ''
+            repr += 'EE'
+            for letter in constraint:
+                if letter in cards:
+                    repr += 'O'
+                elif letter in state:
+                    repr += 'P'
+                else:
+                    repr += '_'
+            repr += 'EE'
+            for i in range(2, len(repr) - 2):
+                if repr[i] != 'O':
+                    continue
+                if (repr[i-1] in ['P', 'E'] or repr[i-2:i] in ['EO', 'PO', 'OO']) and (repr[i+1] in ['P', 'E'] or repr[i-2] in ['OE', 'OP', 'OO']):
+                    chosen_letter = constraint[i-2]
+                    if repr[i-1] == 'P':
+                        direction = 1
+                        neighbor_letter = constraint[i-3]
+                    elif repr[i+1] == 'P':
+                        direction = -1
+                        neighbor_letter = constraint[i-1]
+                    else:
+                        # TODO: Handle the other cases
+                        continue
+                    neighbor_index = state.index(neighbor_letter)
+                    chosen_index = neighbor_index % 12 + direction
+                    for _ in range(10):
+                        if territory[chosen_index] == 4:
+                            break
+                        if direction == 1:
+                            chosen_index = (chosen_index + (12 if chosen_index < 12 else -11)) % 24
+                        else:
+                            chosen_index = (chosen_index + (11 if chosen_index < 12 else -12)) % 24
+                    if territory[chosen_index] != 4:
+                        # TODO: This case should be handled earlier
+                        continue
+                    chosen_hour = chosen_index % 12 if chosen_index % 12 != 0 else 12
+                    print(chosen_hour, chosen_letter)
+                    return chosen_hour, chosen_letter
+
+        # Implement Part 3 below
+        # If this area of the code has been reached, then we couldn't find a useful we want to play
+        if discard:
+            chosen_letter = self.rng.choice(discard)
+            chosen_hour = self.rng.choice([i for i in range(1, 13) if territory[i-1] == 4])
+            return chosen_hour, chosen_letter
+        # If there's no discard, then we have to play a useful, starting from the shortest constraint
+        else:
+            chosen_letter = None
+            for constraint in sorted(map(lambda c: c.split('<'), constraints), key=len, reverse=False):
+                for letter in useful:
+                    if letter in constraint:
+                        chosen_letter = letter
+                        break
+            available_hours = np.where(np.array(territory) == 4)
+            chosen_hour = self.rng.choice(available_hours[0])
+            return chosen_hour, chosen_letter
+
+
+
+        # Remove this code block when done
+        chosen_letter = self.rng.choice(cards)
         territory_array = np.array(territory)
         available_hours = np.where(territory_array == 4)
-        hour = self.rng.choice(available_hours[0])
-        hour = hour%12 if hour%12!=0 else 12
-        return hour, letter
+        chosen_hour = self.rng.choice(available_hours[0])
+        chosen_hour = chosen_hour%12 if chosen_hour%12!=0 else 12
+        return chosen_hour, chosen_letter

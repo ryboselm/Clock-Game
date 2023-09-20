@@ -10,8 +10,6 @@ from typing import Tuple, List
 @dataclass
 class Node:
     state: npt.ArrayLike
-    parent: "Node"
-    children: list["Node"]
     hour: int
     letter: str
     score: int = 0
@@ -21,16 +19,14 @@ class Node:
 class Tree:
     def __init__(self, root: "Node"):
         self.root = root
+        self.root.children = []
         self.nodes = {root.state.tobytes(): root}
-        self.size = 1
 
     def add(self, node: "Node"):
         self.nodes[node.state.tobytes()] = node
-        parent = node.parent
-        parent.children.append(node)
-        self.size += 1
+        self.root.children.append(node)
 
-    def get(self, state: list[str]):
+    def get(self, state: npt.ArrayLike):
         flat_state = state.tobytes()
         if flat_state not in self.nodes:
             return None
@@ -47,8 +43,8 @@ class Player:
         self.rng = rng
 
     # def choose_discard(self, cards: list[str], constraints: list[str]):
-    def choose_discard(self, cards, constraints):
-        """Function in which we choose which cards to discard, and it also inititalises the cards dealt to the player at the game beginning
+    def choose_discard(self, cards, constraints, data_mode=None):
+        """Function in which we choose which constraints to keep, and it also inititalises the cards dealt to the player at the game beginning
 
         Args:
             cards(list): A list of letters you have been given at the beginning of the game.
@@ -60,14 +56,41 @@ class Player:
         final_constraints = []
 
         for constraint in constraints:
+            present_pct, alternating_pct = 0, 0
             lst = constraint.split("<")
             letters_in_constraint = set(lst)
+
             num_letters_in_cards = sum(
                 1 for letter in letters_in_constraint if letter in cards)
-            pct = (num_letters_in_cards / len(letters_in_constraint))
-            if pct >= 0.5:
+            present_pct = (num_letters_in_cards / len(letters_in_constraint))
+
+            if all(lst[i] in cards for i in range(0, len(lst), 2)) and len(letters_in_constraint) > 2:
+                # [0, 2] in 3; [0, 2] in 4; [0, 2, 4] in 5
+                alternating_pct = 0.6
+            if all(lst[i] in cards for i in range(1, len(lst), 2)):
+                if len(letters_in_constraint) > 2 and len(letters_in_constraint) % 2 == 1:
+                    # [1] in 3; [1, 3] in 5
+                    alternating_pct += 0.4
+                elif len(letters_in_constraint) > 2:
+                    # [1, 3] in 4
+                    if alternating_pct == 0:
+                        alternating_pct += 0.6
+                    else:
+                        # in case this is a 4/4
+                        alternating_pct += 0.4
+
+            pct = present_pct * 0.5 + alternating_pct * 0.5
+            if pct >= 0.4:
                 final_constraints.append(constraint)
 
+            if data_mode:
+                with open("data.txt", "a") as file1:
+                    # Writing data to a file
+                    file1.write("\n" + constraint + " present: " + str(present_pct) +
+                                " alt: " + str(alternating_pct) + " final pct: " + str(pct))
+                    file1.flush()
+
+            # print(constraint, "present:", present_pct, "alt:", alternating_pct, "final pct:", pct, "\n")
         return final_constraints
 
     def __risky_versus_safe():
@@ -151,8 +174,7 @@ class Player:
                     # if both slots of hour already occupied, continue
                     continue
                 hour = 12 if i == 0 else i
-                tree.add(Node(np.array(new_state),
-                         tree.root, [], hour, letter, 0, 1))
+                tree.add(Node(np.array(new_state), hour, letter, 0, 1))
         return tree
 
     def __simulate(self, tree: "Tree", state: npt.ArrayLike, constraints: list[str], remaining_cards: list[str]):
@@ -188,16 +210,15 @@ class Player:
     def __MCTS(self, cards: list[str], constraints: list[str], state: list[str], rollouts: int = 1000):
         # MCTS main loop: Execute MCTS steps rollouts number of times
         # Then return successor with highest number of rollouts
-        tree = Tree(Node(np.array(state), None, [], 24, 'Z', 0, 1))
+        tree = Tree(Node(np.array(state), 24, 'Z', 0, 1))
         tree = self.__expand(tree, cards, state)
-        shuffled_letters = list(self.rng.choice(
-            list(string.ascii_uppercase)[:24], 24, replace=False))
+        possible_letters = list(string.ascii_uppercase)[:24]
         for letter in state:
             if letter != 'Z':
-                shuffled_letters.remove(letter)
+                possible_letters.remove(letter)
 
         for i in range(rollouts):
-            available_letters = shuffled_letters.copy()
+            available_letters = possible_letters.copy()
             move = self.__select(tree, state)
             available_letters.remove(move.letter)
             tree = self.__simulate(
