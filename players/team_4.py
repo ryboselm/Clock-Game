@@ -2,6 +2,7 @@ from tokenize import String
 import numpy as np
 from typing import Tuple, List
 
+
 class Player:
     def __init__(self, rng: np.random.Generator) -> None:
         """Initialise the player with given skill.
@@ -18,38 +19,29 @@ class Player:
         """
         self.rng = rng
 
-    def ev(constraints: list, hand: str):
+    def ev(self, constraints: list[str], hand: list[str]):
         value = dict()
-        what2keep = list()
         # evaluating the expected payoff of each constraint
-        for constraint in constraints:
+        for formatted_constraint in constraints:
+            constraint = formatted_constraint.replace("<", "")
             p = 1.0
             for letter in hand:
                 idx = constraint.find(letter)
-                if idx!=-1:
-                    uselessletters.discard(letter)
-                    if (idx>0 and constraint[idx-1] not in hand)\
-                    and (idx<len(constraint)-1 and constraint[idx+1] not in hand):
+                if idx != -1:
+                    if (idx > 0 and constraint[idx-1] not in hand)\
+                    and (idx < len(constraint)-1 and constraint[idx+1] not in hand):
                         p *= 0.94
-            for idx in range(1,len(constraint)):
+            for idx in range(1, len(constraint)):
                 if (constraint[idx-1] not in hand) and (constraint[idx] not in hand):
                     p *= 10/23
                 else:
                     p *= 0.98
-            #print(f"constraint: {constraint}")
-            #print(f"p={p:.5f}")
-            value[constraint] = 2.0*p-1.0 if len(constraint)==2 else p-1+p*3.0*2**(len(constraint)-3)
-            #print(f"ev={value[constraint]:.5f}")
-            if value[constraint]>0:
-                what2keep.append(constraint)
-        # removing contradicting constraints - how?
+            print(f"constraint: {formatted_constraint}")
+            print(f"p={p:.5f}")
+            value[formatted_constraint] = 2.0*p-1.0 if len(constraint) == 2 else p-1+p*3.0*2**(len(constraint)-3)
+            print(f"ev={value[formatted_constraint]:.5f}")
 
-        # returning useless letters
-        uselessletters = {letter for letter in hand}
-        for constraint in what2keep:
-            for letter in constraint:
-                uselessletters.discard(letter)
-        return what2keep, uselessletters
+        return value
     
     #def choose_discard(self, cards: list[str], constraints: list[str]):
     def choose_discard(self, cards, constraints):
@@ -62,10 +54,16 @@ class Player:
         Returns:
             list[int]: Return the list of constraint cards that you wish to keep. (can look at the default player logic to understand.)
         """
-        constraints = [c.replace("<","") for c in constraints]
-        what2keep,_ = self.ev(constraints, cards)
-        return [constraints.index(c) for c in what2keep]
+        value = self.ev(constraints, cards)
+        sorted_constraints_dict = dict(sorted(value.items(), key=lambda item: item[1], reverse=True))
+        print("sorted constraints:", sorted_constraints_dict)
 
+        final_constraints = []
+        for formatted_constraint, ev in sorted_constraints_dict.items():
+            if ev > 0:
+                final_constraints.append(formatted_constraint)
+
+        return final_constraints
 
     #def play(self, cards: list[str], constraints: list[str], state: list[str], territory: list[int]) -> Tuple[int, str]:
     def play(self, cards, constraints, state, territory):
@@ -82,7 +80,7 @@ class Player:
             Tuple[int, str]: Return a tuple of slot from 1-12 and letter to be played at that slot
         """
         #Do we want intermediate scores also available? Confirm pls
-        
+
         letter = self.rng.choice(cards)
         territory_array = np.array(territory)
         available_hours = np.where(territory_array == 4)
