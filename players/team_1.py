@@ -16,6 +16,9 @@ class Player:
             map_path (str): File path to map
             precomp_dir (str): Directory path to store/load precomputation
         """
+        self.discardPile = []
+        self.lettersNeeded = []
+        self.nextPlay = None 
         self.rng = rng
 
     #def choose_discard(self, cards: list[str], constraints: list[str]):
@@ -30,41 +33,15 @@ class Player:
             list[int]: Return the list of constraint cards that you wish to keep. (can look at the default player logic to understand.)
         """
         final_constraints = []
-        #print(constraints)
-        symbol_count = 0
-        letter_count = 0
-     
-        for cons_ in constraints:
-            symbol_count = self.check_constraints(cons_)
-            letter_count = self.check_similar(cons_, cards)
-            if symbol_count == 1 and letter_count>0:
-                final_constraints.append(cons_)
-                continue
-            if symbol_count == 2 and letter_count>0:
-                final_constraints.append(cons_)
-                continue
-            if symbol_count == 3 and letter_count>1:
-                final_constraints.append(cons_)
-                continue
-            if symbol_count == 4 and letter_count>2:
-                final_constraints.append(cons_)
-                continue             
+
+        for constraint in constraints: 
+        #check every constraint to make sure we have atleast 1 letter in every pair in constraint
+            if self.__checkPairs(cards, constraint): 
+                final_constraints.append(constraint)
+
+        self.__organizeCards(cards, final_constraints)
         return final_constraints
 
-    def check_constraints(self, cons_):
-        symbol_count = 0
-        for char in cons_:
-            if char == "<":
-                symbol_count +=1
-        return symbol_count
-
-
-    def check_similar(self, cons_, cards):
-        letter_count = 0
-        for char in cons_:
-            if char in cards:
-                letter_count +=1
-        return letter_count
 
 
     #def play(self, cards: list[str], constraints: list[str], state: list[str], territory: list[int]) -> Tuple[int, str]:
@@ -82,10 +59,58 @@ class Player:
             Tuple[int, str]: Return a tuple of slot from 1-12 and letter to be played at that slot
         """
         #Do we want intermediate scores also available? Confirm pls
-        
-        letter = self.rng.choice(cards)
+        letter = None 
+        for constraint in constraints: 
+            if self.__haveAllLetters(cards, constraint): 
+                letter = constraint[0]
+                self.nextPlay = constraint[2]
+        if letter is None and self.nextPlay is not None: 
+            letter = self.nextPlay
+            self.nextPlay = None
+        elif letter is None:
+            letter = self.rng.choice(cards)
         territory_array = np.array(territory)
         available_hours = np.where(territory_array == 4)
         hour = self.rng.choice(available_hours[0])          #because np.where returns a tuple containing the array, not the array itself
         hour = hour%12 if hour%12!=0 else 12
         return hour, letter
+    
+    def __checkPairs(self, cards, constraint): 
+    #treat constraint as collection of pairs and check each pair 
+        i = 0
+        while i < len(constraint)-1:  
+            if not self.__havePair(cards, constraint[i], constraint[i+2]):
+                return False
+            i += 2
+        return True
+
+    def __havePair(self, cards, letter1, letter2): 
+    #check if we have atleast 1 letter in pair of letters 
+        return letter1 in cards or letter2 in cards
+    
+    def __organizeCards(self, cards, constraints):
+        for constraint in constraints: 
+            i = 0
+            while i < len(constraint): 
+                if constraint[i] not in cards and constraint[i] not in self.lettersNeeded: 
+                    self.lettersNeeded.append(constraint[i])
+                i += 2
+        
+        for card in cards: 
+            if self.__isDiscard(card, constraints): 
+                self.discardPile.append(card)
+
+    def __isDiscard(self, card, constraints): 
+        for constraint in constraints: 
+            if card in constraint: return False 
+        return True 
+
+    def __haveAllLetters(self, cards, constraint): 
+        i = 0 
+        while i < len(constraint):  
+            if constraint[i] not in cards: 
+                return False
+            i+=2
+        return True
+
+
