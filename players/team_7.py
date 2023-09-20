@@ -2,15 +2,12 @@ from tokenize import String
 import numpy as np
 from typing import Tuple, List
 import random
-import math
 import time
-import numpy
-import sys
 import string
 
 letters = list(string.ascii_uppercase)
-#print(sys.getrecursionlimit())
-class Player:
+
+class team_7:
     def __init__(self, rng: np.random.Generator) -> None:
         """Initialise the player with given skill.
 
@@ -26,7 +23,6 @@ class Player:
         """
         self.rng = rng
 
-    #def choose_discard(self, cards: list[str], constraints: list[str]):
     def choose_discard(self, cards, constraints):
         """Function in which we choose which cards to discard, and it also inititalises the cards dealt to the player at the game beginning
 
@@ -39,192 +35,281 @@ class Player:
         """
         final_constraints = []
 
-        for i in range(len(constraints)):
-            list_of_letters = constraints[i].split("<")
-            for j in cards:
-                if j in list_of_letters:
-                    final_constraints.append(constraints[i])
-                    break
+        for constraint in constraints:
+            list_of_letters = constraint.split("<")
+            missing_letters = len([letter for letter in list_of_letters if letter not in cards])
+
+            if len(list_of_letters) in [2, 3, 4] and missing_letters <= 1:
+                final_constraints.append(constraint)
+            elif len(list_of_letters) == 5 and missing_letters <= 2:
+                final_constraints.append(constraint)
+
         #print(cards)
         #print(final_constraints)
         return final_constraints
 
-
-
-    #def play(self, cards: list[str], constraints: list[str], state: list[str], territory: list[int]) -> Tuple[int, str]:
     def play(self, cards, constraints, state, territory):
-        """Function which based n current game state returns the distance and angle, the shot must be played
+        """Determines the next move based on the current game state.
 
         Args:
-            score (int): Your total score including current turn
-            cards (list): A list of letters you have been given at the beginning of the game
-            state (list(list)): The current letters at every hour of the 24 hour clock
-            territory (list(int)): The current occupiers of every slot in the 24 hour clock. 1,2,3 for players 1,2 and 3. 4 if position unoccupied.
-            constraints(list(str)): The constraints assigned to the given player
+            cards (list): A list of letters available to the player.
+            constraints (list): The constraints assigned to the player.
+            state (list): The current letters at every hour of the 24-hour clock.
+            territory (list): The current occupiers of every slot in the 24-hour clock.
 
         Returns:
-            Tuple[int, str]: Return a tuple of slot from 1-12 and letter to be played at that slot
-        """
-        #Do we want intermediate scores also available? Confirm pls
+            tuple: A tuple containing the selected hour (1-12) and the letter to be played at that hour.
 
+        This method initializes some variables and makes a preliminary check for two-letter constraints. If a valid move isn't found, it resorts to the maximize function to find the best possible move. It returns the selected move as a tuple containing the hour and the letter.
+        """
         self.level = 0
         self.time = time.process_time()
-        #print(self.time)
-        global mx
-        state_array = np.array(state)
-        duplicate_cards = cards.copy()
-        duplicate_state =  state.copy()
+
+        state_array = np.array(state).tolist()
         duplicate_territory = territory.copy()
         duplicate_constraints = constraints.copy()
-        score = self.getCurrentScore(constraints, state_array, territory)
-        child, util = self.maximize(duplicate_cards, duplicate_state,
-                                    duplicate_territory, duplicate_constraints, -10000, 10000)
-        ##print(self.current_score_calculator(constraints, state, territory))
-        '''
-        letter = self.rng.choice(cards)
-        territory_array = np.array(territory)
-        available_hours = np.where(territory_array == 4)
-        hour = self.rng.choice(available_hours[0])          #because np.where returns a tuple containing the array, not the array itself
-        hour = hour%12 if hour%12!=0 else 12
-        '''
-        #print(cards)
+
+        if len(constraints) == 1 and len(constraints[0].split("<")) == 2:
+            if not self.check_two_letter_constraint_viability(constraints[0], state_array, duplicate_territory):
+                available_moves = self.getAvailableMoves(cards, duplicate_territory)
+                random_move = random.choice(list(available_moves.items()))
+                random_letter = random_move[0]
+                random_hour = random.choice(random_move[1]) % 12
+                random_hour = random_hour if random_hour != 0 else 12
+                return random_hour, random_letter
+
+        child, util = self.maximize(cards, state_array, duplicate_territory, duplicate_constraints, -10000, 10000)
+
         letter = child[0]
         hour = child[1]
-        hour = hour%12 if hour%12!=0 else 12
-        #print(letter)
+        hour = hour % 12 if hour % 12 != 0 else 12
 
         return hour, letter
-    
-    
+
+    def check_two_letter_constraint_viability(self, constraint, state, territory):
+        """Checks the viability of satisfying a two-letter constraint given the current state and territory.
+
+        Args:
+            constraint (str): The constraint string to check, in the format "A<B".
+            state (list): The current state of the board, a list containing letters at each hour position.
+            territory (list): The current state of territory ownership.
+
+        Returns:
+            bool: True if it's viable to satisfy the constraint, otherwise False.
+
+        This method checks whether a two-letter constraint can be satisfied given the current state and available slots. It returns True if there is a viable option to play a card that satisfies the constraint, otherwise it returns False.
+        """
+        list_of_letters = constraint.split("<")
+        letter_positions = [state.index(letter) if letter in state else None for letter in list_of_letters]
+        available_slots = [i for i, val in enumerate(territory) if val == 4]
+
+        if letter_positions[1] is None and letter_positions[0] is not None:
+            for slot in available_slots:
+                if 0 < (slot - letter_positions[0]) % 12 <= 5:
+                    return True
+        return False
+
     def minimize(self, cards, state, territory, constraints, alpha, beta):
-        self.level = self.level + 1
-        #print(self.level)
+        """Minimizes the utility value in the minimax algorithm with alpha-beta pruning.
+
+        Args:
+            cards (list): List of available cards to play.
+            state (list): Current state of the board.
+            territory (list): Current territory ownership status.
+            constraints (list): List of constraints to satisfy.
+            alpha (int): The current alpha value for alpha-beta pruning.
+            beta (int): The current beta value for alpha-beta pruning.
+
+        Returns:
+            tuple: A tuple containing the best move and its utility value.
+
+        This method represents the minimizing player in the minimax algorithm. It explores possible moves and evaluates them using the maximize method, attempting to minimize the utility value. Alpha-beta pruning is used to ignore branches with lower utility values.
+        """
+
+        self.level += 1
         curr_time = time.process_time() - self.time
         availableMoves = self.getAvailableMoves(cards, territory)
-        territory_array = np.array(territory)
-        available_hours = np.where(territory_array == 4)
-        available_hours =  np.array(available_hours)
-        if len(available_hours[0]) == 0 or curr_time >= 1:
-            return [state, territory], self.getCurrentScore(constraints, cards, territory)
-        
+        available_hours = np.where(np.array(territory) == 4)[0]
+
+        if len(available_hours) == 0 or curr_time >= 1:
+            return [state, territory], self.getCurrentScore(constraints, state, territory)
+
         availableLetters = list(set(letters) - set(state) - set(cards))
 
-        minChild, minUtil = 0, 10000
-        '''
-        for i in range(len(territory_array)):
-            if state[i] == 'Z':
-                for a in availableLetters:
-                    state[i] = a #self.rng.choice(availableLetters) 
-                    territory[i] = 0 
-                    for j in range(len(territory_array)):
-                        if state[j] == 'Z':
-                            for b in availableLetters:
-                                state[j] = b #self.rng.choice(availableLetters) 
-                                territory[j] = 2
-                                other, util = self.maximize(cards, state, territory, constraints, alpha, beta)
-                                
-                                util = util + self.getCurrentScore(constraints, cards, territory)
+        minChild, minUtil = None, 10000
 
-                                if util < minUtil:
-                                    minChild , minUtil = ['A', j], util
-                                
-                                if minUtil <= alpha:
-                                    break
-                                
-                                if minUtil <= beta:
-                                    beta = minUtil
-                        state[j] = 'Z'
-                        territory[j] = 4
-            state[i] = 'Z'
-            territory[i] = 4
-        '''
         for i in range(2):
-            for j in range(len(territory_array)):
-                if state[j] == 'Z' and self.rng.random()<=(1/float(len(available_hours[0]))):
+            for j in available_hours:
+                if self.rng.random() <= (1 / float(len(available_hours))):
                     availableLetters = list(set(letters) - set(state) - set(cards))
-                    state[j] = 'A' #random letter for now
-                    territory[j] = 0 if i == 0 else 2 #HARDCODED. NEEDS TO BE CHANGED TO OTHER PLAYER #
+                    state[j] = 'A'
+                    territory[j] = 0 if i == 0 else 2
 
                     other, util = self.maximize(cards, state, territory, constraints, alpha, beta)
-                    
-                    util = util + self.getCurrentScore(constraints, cards, territory)
+                    util += self.getCurrentScore(constraints, state, territory)
 
                     if util < minUtil:
-                        minChild , minUtil = ['A', j], util
-                    
+                        minChild, minUtil = ['A', j], util
+
                     if minUtil <= alpha:
-                        break
-                    
-                    if minUtil <= beta:
-                        beta = minUtil
-                    
+                        return minChild, minUtil
+
+                    beta = min(beta, minUtil)
+
         return minChild, minUtil
-        
 
     def maximize(self, cards, state, territory, constraints, alpha, beta):
-        self.level = self.level + 1
+        """Maximizes the utility value in the minimax algorithm with alpha-beta pruning.
+
+        Args:
+            cards (list): List of available cards to play.
+            state (list): Current state of the board.
+            territory (list): Current territory ownership status.
+            constraints (list): List of constraints to satisfy.
+            alpha (int): The current alpha value for alpha-beta pruning.
+            beta (int): The current beta value for alpha-beta pruning.
+
+        Returns:
+            tuple: A tuple containing the best move and its utility value.
+
+        This method represents the maximizing player in the minimax algorithm. It explores possible moves and evaluates them using the minimize method, attempting to maximize the utility value. Alpha-beta pruning is used to ignore branches with lower utility values.
+        """
+        self.level += 1
         curr_time = time.process_time() - self.time
-        territory_array = np.array(territory)
-        available_hours = np.where(territory_array == 4)
         availableMoves = self.getAvailableMoves(cards, territory)
-        if availableMoves == {} or curr_time >= 1:
-            return [state, territory], self.getCurrentScore(constraints, cards, territory)
-        
-        maxChild, maxUtil = 0, -10000
+
+        if not availableMoves or curr_time >= 1:
+            return [state, territory], self.getCurrentScore(constraints, state, territory)
+
+        maxChild, maxUtil = None, -10000
+        fallback_move = None
+
         for child in availableMoves:
-            currLetter = child
             for currLocation in availableMoves[child]:
-                state[currLocation] = currLetter
-                territory[currLocation] = 2 #HARDCODED. NEEDS TO BE CHANGED TO CURRENT PLAYER #
-                other, util = self.minimize(cards, state, territory, constraints, alpha, beta)  
-                util = util + self.getCurrentScore(constraints, state, territory)
-                if util > maxUtil:
-                    maxChild, maxUtil = [currLetter, currLocation], util
-                    
-                if maxUtil >= beta:
-                    break
-                
-                if maxUtil >= alpha:
-                    alpha = maxUtil
-            
+                if not fallback_move:
+                    fallback_move = [child, currLocation]
+                if self.is_move_valid(child, state, constraints, cards, currLocation):
+                    state[currLocation] = child
+                    territory[currLocation] = 1  # Current player
+
+                    other, util = self.minimize(cards, state, territory, constraints, alpha, beta)
+                    util += self.getCurrentScore(constraints, state, territory)
+
+                    if util > maxUtil:
+                        maxChild, maxUtil = [child, currLocation], util
+
+                    if maxUtil >= beta:
+                        return maxChild, maxUtil
+
+                    alpha = max(alpha, maxUtil)
+
+        if not maxChild and fallback_move:
+            # Fallback to a random move if no valid moves are found
+            maxChild = fallback_move
+
         return maxChild, maxUtil
 
+    def is_move_valid(self, move, state, constraints, cards, hour):
+        """Checks if a move is valid given the current constraints and state.
+
+        Args:
+            move (str): The letter representing the move to check.
+            state (list): The current state of the board.
+            constraints (list): List of constraints to satisfy.
+            cards (list): List of available cards to play.
+            hour (int): The hour slot where the move is intended to be played.
+
+        Returns:
+            bool: True if the move is valid, otherwise False.
+
+        This method checks whether playing a specific card at a specific hour would satisfy the current constraints. It also checks additional conditions to prevent playing a card that would invalidate a constraint.
+        """
+        for constraint in constraints:
+            if move in constraint:
+                letters_in_constraint = constraint.split("<")
+                if len(letters_in_constraint) == 2:
+                    if letters_in_constraint.index(move) == 0 and letters_in_constraint[1] not in state and \
+                            letters_in_constraint[1] not in cards:
+                        return False
+                    elif letters_in_constraint.index(move) == 1 and letters_in_constraint[0] not in state and \
+                            letters_in_constraint[0] not in cards:
+                        return False
+                else:
+                    if letters_in_constraint.index(move) > 0 and letters_in_constraint[
+                        letters_in_constraint.index(move) - 1] not in state:
+                        return False
+                    # Additional check to prevent playing a card that would invalidate the constraint
+                    prev_index = letters_in_constraint.index(move) - 1
+                    next_index = letters_in_constraint.index(move) + 1
+                    if prev_index >= 0 and letters_in_constraint[prev_index] in state:
+                        prev_hour = state.index(letters_in_constraint[prev_index])
+                        if not (0 < (hour - prev_hour) % 12 <= 5):
+                            return False
+                    if next_index < len(letters_in_constraint) and letters_in_constraint[next_index] in state:
+                        next_hour = state.index(letters_in_constraint[next_index])
+                        if not (0 < (next_hour - hour) % 12 <= 5):
+                            return False
+        return True
+
     def getAvailableMoves(self, cards, territory):
+        """Gets the available moves given the current cards and territory.
+
+        Args:
+            cards (list): List of available cards to play.
+            territory (list): Current territory ownership status.
+
+        Returns:
+            dict: A dictionary where keys are available cards and values are lists of available hours to play them.
+
+        This method generates a dictionary of available moves given the current cards and territory status. Each card can be played at any available hour slot.
+        """
         availableMoves = {}
-        territory_array = np.array(territory)
-        available_hours = np.where(territory_array == 4)
-        for i in cards:
-            for j in available_hours:
-                availableMoves[i] = j
+        available_slots = np.where(np.array(territory) == 4)[0]
+
+        for card in cards:
+            availableMoves[card] = available_slots
+
         return availableMoves
 
-        
-
-
-
-
-
     def getCurrentScore(self, constraints, state, territory):
+        """Calculates the current score based on the constraints and the current state of the board.
+
+        Args:
+            constraints (list): List of constraints to satisfy.
+            state (list): The current state of the board.
+            territory (list): Current territory ownership status.
+
+        Returns:
+            int: The current score.
+
+        This method calculates the current score by evaluating each constraint with the current state of the board. It adds points for satisfied constraints and deducts points for unsatisfied constraints, returning the total score.
+        """
         letter_position = {}
         for i in range(len(state)):
             letter_position[state[i]] = i
         score = 0
-        score_value_list = [1,3,12,24]  #points for satisfying constraints on different lengths
-        for j in range(len(constraints)):
-            list_of_letters = constraints[j].split("<")
+        score_value_list = [1, 3, 12, 24]
+
+        for constraint in constraints:
+            list_of_letters = constraint.split("<")
             constraint_true_indic = True
-            for i2 in range(len(list_of_letters)-1):
-                #Also include intermediate score functionality
-                if list_of_letters[i2+1] in letter_position and list_of_letters[i2] in letter_position:
-                    distance_difference = (letter_position[list_of_letters[i2+1]]%12) - (letter_position[list_of_letters[i2]]%12)
+
+            for i in range(len(list_of_letters) - 1):
+                if list_of_letters[i + 1] in letter_position and list_of_letters[i] in letter_position:
+                    distance_difference = (letter_position[list_of_letters[i + 1]] % 12) - (
+                            letter_position[list_of_letters[i]] % 12)
                     if distance_difference < 0:
-                        distance_difference = distance_difference + 12
-                    if not (distance_difference <=5 and distance_difference > 0):
+                        distance_difference += 12
+                    if not (0 < distance_difference <= 5):
                         constraint_true_indic = False
+                        break
                 else:
                     constraint_true_indic = False
-                if constraint_true_indic == False:
-                    score = score - 10
-                if constraint_true_indic:
-                    score = score + score_value_list[len(list_of_letters) - 2]
-        return score*10
+                    break
+
+            if constraint_true_indic:
+                score += score_value_list[len(list_of_letters) - 2]
+            else:
+                score -= 10
+
+        return score * 10
