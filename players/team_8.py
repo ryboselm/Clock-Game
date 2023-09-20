@@ -43,7 +43,7 @@ class Player:
         self.rng = rng
 
     # def choose_discard(self, cards: list[str], constraints: list[str]):
-    def choose_discard(self, cards, constraints):
+    def choose_discard(self, cards, constraints, data_mode=None):
         """Function in which we choose which constraints to keep, and it also inititalises the cards dealt to the player at the game beginning
 
         Args:
@@ -83,11 +83,13 @@ class Player:
             if pct >= 0.4:
                 final_constraints.append(constraint)
 
-            with open("data.txt", "a") as file1:
-                # Writing data to a file
-                file1.write("\n" + constraint + " present: " + str(present_pct) +
-                            " alt: " + str(alternating_pct) + " final pct: " + str(pct))
-                file1.flush()
+            if data_mode:
+                with open("data.txt", "a") as file1:
+                    # Writing data to a file
+                    file1.write("\n" + constraint + " present: " + str(present_pct) +
+                                " alt: " + str(alternating_pct) + " final pct: " + str(pct))
+                    file1.flush()
+
             # print(constraint, "present:", present_pct, "alt:", alternating_pct, "final pct:", pct, "\n")
         return final_constraints
 
