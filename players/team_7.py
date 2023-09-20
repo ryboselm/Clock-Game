@@ -7,7 +7,7 @@ import string
 
 letters = list(string.ascii_uppercase)
 
-class team_7:
+class Player:
     def __init__(self, rng: np.random.Generator) -> None:
         """Initialise the player with given skill.
 
@@ -34,18 +34,28 @@ class team_7:
             list[int]: Return the list of constraint cards that you wish to keep. (can look at the default player logic to understand.)
         """
         final_constraints = []
+        constraint_list = [[], [], [], []]
+        # TODO: Can we always assume we will get valid input?
+        for i in range(len(constraints)):
+            letter_list = constraints[i]
+            letters = letter_list.split('<')
+            length_of_letters = len(letters)
+            # always add constaints of size 2 and 3 if you have at least one letter
+            if length_of_letters == 2 and any(letter in letters for letter in cards):
+                constraint_list[length_of_letters - 2].append(letter_list)
+            elif length_of_letters == 3:
+                if (letters[0] in cards and letters[2] in cards) or (letters[1] in cards):
+                    constraint_list[length_of_letters - 2].append(letter_list)
+            elif length_of_letters >= 4:
+                if (letters[0] in cards and letters[2] in cards) or (letters[1] in cards and letters[3] in cards):
+                    constraint_list[length_of_letters - 2].append(letter_list)
 
-        for constraint in constraints:
-            list_of_letters = constraint.split("<")
-            missing_letters = len([letter for letter in list_of_letters if letter not in cards])
+        # TODO: Check for contradictory constraints
 
-            if len(list_of_letters) in [2, 3, 4] and missing_letters <= 1:
-                final_constraints.append(constraint)
-            elif len(list_of_letters) == 5 and missing_letters <= 2:
-                final_constraints.append(constraint)
+        # print(constraints)
+        for i in range(len(constraint_list)):
+             final_constraints.extend(constraint_list[i])
 
-        #print(cards)
-        #print(final_constraints)
         return final_constraints
 
     def play(self, cards, constraints, state, territory):
