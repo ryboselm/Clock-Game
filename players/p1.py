@@ -63,7 +63,7 @@ class Player:
         #calculates which constraints have the highest EVs
         constraint_scores = []
         for constraint in constraints:
-            constraint_scores.append(self.calculate_ev(constraint, cards, state))
+            constraint_scores.append(self.calculate_ev(constraint, cards, state, territory))
         
         #constraint scores
         # print("Constraints:")
@@ -132,7 +132,7 @@ class Player:
             return hour, letter
 
 
-    def calculate_ev(self, constraint, cards, state):
+    def calculate_ev(self, constraint, cards, state, territory):
         """
             calculates a heuristic EV of a given constraint
         """
@@ -183,7 +183,7 @@ class Player:
             if letter_positions[i] == -1:
                 Zcount = 0
                 for j in validPlacements[i]:
-                    if state[j] == 'Z':
+                    if territory[j] == 'Z':
                         Zcount = Zcount + 1
                 probability *= Zcount/avail_spots
         
