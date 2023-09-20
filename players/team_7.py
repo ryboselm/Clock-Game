@@ -40,13 +40,17 @@ class Player:
             letter_list = constraints[i]
             letters = letter_list.split('<')
             length_of_letters = len(letters)
+            missing_letters = len([letter for letter in letters if letter not in cards])
             # always add constaints of size 2 and 3 if you have at least one letter
-            if length_of_letters == 2 and any(letter in letters for letter in cards):
+            if length_of_letters == 2 and missing_letters <= 1:
                 constraint_list[length_of_letters - 2].append(letter_list)
-            elif length_of_letters == 3:
+            elif length_of_letters == 3 and missing_letters <= 2:
                 if (letters[0] in cards and letters[2] in cards) or (letters[1] in cards):
                     constraint_list[length_of_letters - 2].append(letter_list)
-            elif length_of_letters >= 4:
+            elif length_of_letters == 4 and missing_letters <= 2:
+                if (letters[0] in cards and letters[2] in cards) or (letters[1] in cards and letters[3] in cards):
+                    constraint_list[length_of_letters - 2].append(letter_list)
+            elif length_of_letters == 5 and missing_letters <= 2:
                 if (letters[0] in cards and letters[2] in cards) or (letters[1] in cards and letters[3] in cards):
                     constraint_list[length_of_letters - 2].append(letter_list)
 
