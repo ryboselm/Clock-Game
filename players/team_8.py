@@ -15,6 +15,7 @@ class Node:
     score: int = 0
     N: int = 0
 
+
 class Tree:
     def __init__(self, root: "Node"):
         self.root = root
@@ -43,7 +44,7 @@ class Player:
 
     # def choose_discard(self, cards: list[str], constraints: list[str]):
     def choose_discard(self, cards, constraints):
-        """Function in which we choose which cards to discard, and it also inititalises the cards dealt to the player at the game beginning
+        """Function in which we choose which constraints to keep, and it also inititalises the cards dealt to the player at the game beginning
 
         Args:
             cards(list): A list of letters you have been given at the beginning of the game.
@@ -54,17 +55,40 @@ class Player:
         """
         final_constraints = []
 
-        # TODO: resolve conflicting constraints
-
         for constraint in constraints:
+            present_pct, alternating_pct = 0, 0
             lst = constraint.split("<")
             letters_in_constraint = set(lst)
+
             num_letters_in_cards = sum(
                 1 for letter in letters_in_constraint if letter in cards)
-            pct = (num_letters_in_cards / len(letters_in_constraint))
-            if pct >= 0.5:
+            present_pct = (num_letters_in_cards / len(letters_in_constraint))
+
+            if all(lst[i] in cards for i in range(0, len(lst), 2)) and len(letters_in_constraint) > 2:
+                # [0, 2] in 3; [0, 2] in 4; [0, 2, 4] in 5
+                alternating_pct = 0.6
+            if all(lst[i] in cards for i in range(1, len(lst), 2)):
+                if len(letters_in_constraint) > 2 and len(letters_in_constraint) % 2 == 1:
+                    # [1] in 3; [1, 3] in 5
+                    alternating_pct += 0.4
+                elif len(letters_in_constraint) > 2:
+                    # [1, 3] in 4
+                    if alternating_pct == 0:
+                        alternating_pct += 0.6
+                    else:
+                        # in case this is a 4/4
+                        alternating_pct += 0.4
+
+            pct = present_pct * 0.5 + alternating_pct * 0.5
+            if pct >= 0.4:
                 final_constraints.append(constraint)
 
+            with open("data.txt", "a") as file1:
+                # Writing data to a file
+                file1.write("\n" + constraint + " present: " + str(present_pct) +
+                            " alt: " + str(alternating_pct) + " final pct: " + str(pct))
+                file1.flush()
+            # print(constraint, "present:", present_pct, "alt:", alternating_pct, "final pct:", pct, "\n")
         return final_constraints
 
     def __risky_versus_safe():
