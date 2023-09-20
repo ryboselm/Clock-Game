@@ -2,6 +2,9 @@ from players.team_8 import *
 from itertools import permutations
 
 
+given_cards = ["A", "B", "C"]
+
+
 def all_possible_constraints():
     # Generate combinations of 1 to 5 letters (as each letter appears only once)
     letters = ['A', 'B', 'C', 'D', 'E']
@@ -29,20 +32,15 @@ def all_possible_constraints():
     return list(sorted(unique_permutations_list))
 
 
-selected = ["A", "B", "C"]
-
 with open("data.txt", "a+") as file:
     # Move the file cursor to the beginning of the file
     file.seek(0)
 
     file_contents = file.read()
 
-    if not file_contents:
-        file.write(str(selected))
-    else:
-        # If the file is not empty, clear its contents and write the data
+    if file_contents:   # If the file is not empty, clear its contents and write the data
         file.truncate(0)
-        file.write(str(selected))
+    file.write(str(given_cards))
 
 tester = Player(np.random.default_rng(int(4)))
-print(tester.choose_discard(selected, all_possible_constraints()))
+print(tester.choose_discard(given_cards, all_possible_constraints(), True))
