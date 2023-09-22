@@ -1,6 +1,7 @@
 from tokenize import String
 import numpy as np
 from typing import Tuple, List
+import heapq
 
 class Player:
 
@@ -32,19 +33,67 @@ class Player:
         Returns:
             list[int]: Return the list of constraint cards that you wish to keep. (can look at the default player logic to understand.)
         """
-        final_constraints = []
-        #print(constraints)
 
-        for i in range(len(constraints)):
-            taking = True
-            arr = constraints[i].split('<')
-            for j in range(len(arr)-1):
-                if arr[j] not in cards and arr[j+1] not in cards:
-                    taking = False
-            if taking:
-                final_constraints.append(constraints[i])
+        maxConstraints = 8 #parameter for the maximum number of constraints we will choose to take.
+        tentative_constraints = [] #maintains value and constraint
 
+        for constraint in constraints:
+            value = self.eval_constraint(constraint, cards) #value of a given constraint according to our heuristic
+            contradictions = []
+            total_contradiction_val = 0
+            for tent_constr in tentative_constraints:
+                if self.contradicting_constraints(constraint, tent_constr[1]):
+                    contradictions.append(tent_constr)
+                    total_contradiction_val += tent_constr[0]
+
+            #only add to constraints if the average value of constraints it contradicts is exceeded
+            if len(contradictions)==0 and value>0 or len(contradictions)>0 and value >= total_contradiction_val/len(contradictions):
+                for contradiction in contradictions:
+                    tentative_constraints.remove(contradiction)
+                if len(contradictions)>0:
+                    heapq.heapify(tentative_constraints)
+                heapq.heappush(tentative_constraints, (value, constraint))
+                #print("push", value, constraint)
+            
+
+            #pops the lowest value constraint out to maintain maximum number of constraints.
+            if (len(tentative_constraints) > maxConstraints):
+                heapq.heappop(tentative_constraints)
+
+        final_constraints = [constr[1] for constr in tentative_constraints]
+        print("hand", cards)
+        print("final constraints:", tentative_constraints)
+        print(" ")
         return final_constraints
+    
+    #Checks whether two constraints contradict one another or not. Returns True if there is a contradiction.
+    def contradicting_constraints(self, con1, con2):
+        arr1 = con1.split('<')
+        arr2 = con2.split('<')
+        for i in range(len(arr1)-1):
+            let1 = arr1[i]
+            let2 = arr1[i+1]
+            for j in range(len(arr2)-1):
+                if arr2[j] == let2 and arr2[j+1] == let1: #e.g. say you have A<B<C and C<B. Would return True because of B<C and C<B
+                    return True
+        return False
+    
+    def eval_constraint(self, constraint, hand): #returns a number denoting the value of this constraint
+        penalty00 = 0.3 #heuristic value for likelihood if both adjacent cards are missing from your hand
+        penalty01 = 0.6 #heuristic value for likelihood if one adjacent card is missing from your hand
+        penalty11 = .95 #heuristic value for likelihood if both cards are present in your hand
+        arr = constraint.split('<')
+        scores = [1,3,6,12]
+        win_val = scores[len(arr)-2] #the value you get if you win
+        con_score = 1.0
+        for i in range(len(arr)-1):
+            if arr[i] in hand and arr[i+1] in hand:
+                con_score*=penalty11
+            elif arr[i] not in hand and arr[i+1] not in hand:
+                con_score*=penalty00
+            else:
+                con_score*=penalty01
+        return con_score * win_val + (1-con_score) * (-1)
 
     def conv_const(self, state, con, hand):
         """
@@ -136,7 +185,7 @@ class Player:
                     if i != len(const[0]) - 1:
                         score *= int(const[1][i + 1])
                         score_right = (const[0][i + 1], const[1][i + 1])
-                print(const[0][i], score)
+                #print(const[0][i], score)
                 if score > highest:
                     highest = score
                     highest_i = i
@@ -167,11 +216,11 @@ class Player:
 
         #the selection of slots that satisfy both surrounding constraints
         valid_slots = right_dep_slots.intersection(left_dep_slots)
-        print(valid_slots) 
+        #print(valid_slots) 
         if len(valid_slots) == 0:
-            print(open_slots)
-            print(hand)
-            print(state)
+            #print(open_slots)
+            #print(hand)
+            #print(state)
             return ((open_slots[0],const[0][highest_i]), 0) #what?
         else:
             most = 0
@@ -328,7 +377,7 @@ class Player:
             hour = hour % 12 if hour % 12 != 0 else 12
             return hour, letter
         else:
-            print(top_i[0])
+            #print(top_i[0])
             return(top_i[0])
     
     #getAvailSpots: leftpos, rightpos: 0-11 or -1. If leftpos or rightpos are -1 it disregards that side
