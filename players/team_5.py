@@ -412,3 +412,97 @@ class Player:
         lst3 = [value for value in lst1 if value in lst2]
         return lst3
 
+    def get_highest_move(self, state, const, consts, hand):
+        # takes in converted constraint
+        # pick letter to try
+        # highest = -1
+        # highest_i = 0
+        # highest_left = ('','')
+        # highest_right = ('','')
+        if '1' not in const[1]:
+            return (('', ''), 0)
+
+        highest_ev = 0
+        highest_slot = -1
+        highest_letter = 'Z'
+
+        for i in range(len(const[0])):
+            if const[1][i] != '1':
+                pass
+            left = ('', '')
+            right = ('', '')
+            cur = const[0][i]
+            if i != 0:
+                left = (const[0][i - 1], const[1][i - 1])
+            if i != len(const[0]) - 1:
+                right = (const[0][i + 1], const[1][i + 1])
+                # if score > highest:
+                #   highest = score
+                #   highest_i = i
+                #   highest_left = score_left
+                #   highest_right = score_right
+            left_dep_slots = set()
+            right_dep_slots = set()
+            open_slots = []
+            where = {}
+            for i in range(len(state)):
+                for j in state[i]:
+                    if j == 'Z':
+                        open_slots.append(i)
+                    else:
+                        where[j] = i
+
+            if left[1] == '2':
+                basis = where[const[0][i - 1]]
+                for i in range(1, 6):
+                    if (basis + i) % 12 in open_slots:
+                        left_dep_slots.add((basis + i) % 12)
+            else:
+                left_dep_slots = set(open_slots)
+
+            if right[1] == '2':
+                basis = where[const[0][i + 1]]
+                for i in range(1, 6):
+                    if (basis - i) % 12 in open_slots:
+                        right_dep_slots.add((basis - i) % 12)
+            else:
+                right_dep_slots = set(open_slots)
+            valid_slots = right_dep_slots.intersection(left_dep_slots)
+            if len(valid_slots) == 0:
+                return ((const[0][i], open_slots[0]), 0)  # what should I do here
+
+            ev = 0
+            remaining_slots = len(open_slots) - 1
+            for slot in valid_slots:
+                if state[slot][0] == 'Z':
+                    state[slot][0] = cur
+                else:
+                    state[slot][1] = cur
+                hand.remove(cur)
+                ev = self.calc_EV(state,consts,hand,open_slots,where)
+                if ev > highest_ev:
+                    highest_ev = ev
+                    highest_letter = cur
+                    highest_slot = slot
+            return (((highest_letter, highest_slot), highest_ev))
+
+    def calc_EV(self, state, consts, hand, open_slots, where):
+        total_ev = 0
+        points = [1, 3, 6, 12]
+        for const in consts:
+            cc = self.conv_const(state, const, hand)
+
+            # all letters are on the board
+            if '1' not in cc[1] and '0' not in cc[1]:
+                failed = False
+                for i in range(len(cc[0] - 1)):
+                    dist_diff = where[cc[0][i]] - where[cc[0][i + 1]]
+                    if dist_diff < 0:
+                        dist_diff += 12
+                    if not (dist_diff <= 5 and dist_diff != 0):
+                        failed = True
+                if not failed:
+                    total_ev += points[len(cc[1]) - 2]
+                else:
+                    total_ev -= 1
+                pass
