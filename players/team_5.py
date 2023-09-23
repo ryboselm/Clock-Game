@@ -344,49 +344,7 @@ class Player:
         Returns:
             Tuple[int, str]: Return a tuple of slot from 1-12 and letter to be played at that slot
         """
-        topEV = 0 #Top Expected Value
-        top_i = 0 #the entire nested tuple of position and value
-        inp = 0
-        need = set() # The set of cards we need placed to achieve our constraints
-        for constraint in constraints:
-            for_need = constraint.split("<")
-            for letter in for_need:
-                need.add(letter)
-            temper = self.conv_const( state, constraint, cards)
-            #pick_slot: really complicated function, returns ((letter,position), odds) for each constraint
-            out = self.pick_slot( state, temper, cards, territory)
-            EV = out[1]
-            if EV > topEV:
-                topEV = EV
-                top_i = out
-                inp = len(constraint)
-            if EV == topEV: #if constraints are tied in odds, picks the longer constraint
-                if len(constraint) > inp:
-                    topEV = EV
-                    top_i = out
-                    inp = len(constraint)
-        disc = set(cards).difference(need) # The totally irrelevant letters in our hand
-
-        if topEV < self.EV_CUTOFF and len(disc) > 0: #If the best choice is not favorable enough, do random discard
-            territory_array = np.array(territory)
-            available_hours = np.where(territory_array == 4)
-            hour = self.rng.choice(
-                available_hours[0])
-            hour = hour % 12 if hour % 12 != 0 else 12
-            return hour, list(disc)[0]
-        elif top_i[0][0] == -1: #not sure why this occurs sometimes
-            print("best is -1, playing randomly")
-            #completely random card
-            letter = self.rng.choice(cards)
-            territory_array = np.array(territory)
-            available_hours = np.where(territory_array == 4)
-            hour = self.rng.choice(
-                available_hours[0])
-            hour = hour % 12 if hour % 12 != 0 else 12
-            return hour, letter
-        else:
-            #print(top_i[0])
-            return(top_i[0])
+        return self.get_highest_move(state, constraints, cards)
     
     #getAvailSpots: leftpos, rightpos: 0-11 or -1. If leftpos or rightpos are -1 it disregards that side
     #returns it in the full 24 long list ordering. Leftpos means the position 
@@ -420,81 +378,45 @@ class Player:
         lst3 = [value for value in lst1 if value in lst2]
         return lst3
 
-    def get_highest_move(self, state, const, consts, hand):
+    def get_highest_move(self, state, consts, hand):
         # takes in converted constraint
         # pick letter to try
-        # highest = -1
-        # highest_i = 0
-        # highest_left = ('','')
-        # highest_right = ('','')
-        if '1' not in const[1]:
-            return (('', ''), 0)
-
-        highest_ev = 0
-        highest_slot = -1
-        highest_letter = 'Z'
-
-        for i in range(len(const[0])):
-            if const[1][i] != '1':
-                pass
-            left = ('', '')
-            right = ('', '')
-            cur = const[0][i]
-            if i != 0:
-                left = (const[0][i - 1], const[1][i - 1])
-            if i != len(const[0]) - 1:
-                right = (const[0][i + 1], const[1][i + 1])
-                # if score > highest:
-                #   highest = score
-                #   highest_i = i
-                #   highest_left = score_left
-                #   highest_right = score_right
-            left_dep_slots = set()
-            right_dep_slots = set()
-            open_slots = []
-            where = {}
-            for i in range(len(state)):
-                for j in state[i]:
-                    if j == 'Z':
-                        open_slots.append(i)
-                    else:
-                        where[j] = i
-
-            if left[1] == '2':
-                basis = where[const[0][i - 1]]
-                for i in range(1, 6):
-                    if (basis + i) % 12 in open_slots:
-                        left_dep_slots.add((basis + i) % 12)
-            else:
-                left_dep_slots = set(open_slots)
-
-            if right[1] == '2':
-                basis = where[const[0][i + 1]]
-                for i in range(1, 6):
-                    if (basis - i) % 12 in open_slots:
-                        right_dep_slots.add((basis - i) % 12)
-            else:
-                right_dep_slots = set(open_slots)
-            valid_slots = right_dep_slots.intersection(left_dep_slots)
-            if len(valid_slots) == 0:
-                return ((const[0][i], open_slots[0]), 0)  # what should I do here
-
-            ev = 0
-            remaining_slots = len(open_slots) - 1
-            for slot in valid_slots:
-                if state[slot][0] == 'Z':
-                    state[slot][0] = cur
+        open_slots = []
+        where = {}
+        for i in range(len(state)):
+            for j in state[i]:
+                if j == 'Z':
+                    open_slots.append(i)
                 else:
-                    state[slot][1] = cur
-                hand.remove(cur)
-                ev = self.calc_EV(state,consts,hand,open_slots,where)
-                if ev > highest_ev:
-                    highest_ev = ev
-                    highest_letter = cur
-                    highest_slot = slot
-            return (((highest_letter, highest_slot), highest_ev))
+                    where[j] = i
 
-    def calc_EV(self, state, consts, hand, open_slots, where):
+        highest_ev = -100000
+        highest_move = ('','')
+        for letter in hand:
+            for slot in set(open_slots):
+                if state[slot][0] == 'Z':
+                    state[slot][0] = letter
+                else:
+                    state[slot][1] = letter
+                temp_hand = hand.copy()
+                temp_hand.remove(letter)
+                temp_open_slots = open_slots.copy()
+                temp_open_slots.remove(slot)
+                where[letter] = slot
+                move_ev = self.calc_ev(state, consts, temp_hand, where, temp_open_slots)
+                del where[letter]
+                if state[slot][0] == letter:
+                    state[slot][0] = 'Z'
+                else:
+                    state[slot][1] = 'Z'
+
+                if move_ev > highest_ev:
+                    highest_ev = move_ev
+                    highest_move = (slot, letter)
+
+            return highest_move
+
+    def calc_ev(self, state, consts, hand, open_slots, where):
         total_ev = 0
         points = [1, 3, 6, 12]
         for const in consts:
@@ -514,3 +436,4 @@ class Player:
                 else:
                     total_ev -= 1
                 pass
+
