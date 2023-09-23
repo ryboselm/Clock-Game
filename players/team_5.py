@@ -20,7 +20,14 @@ class Player:
             precomp_dir (str): Directory path to store/load precomputation
         """
         self.rng = rng
-        self.EV_CUTOFF = 0.85
+
+        ### Player Parameters
+
+        self.EV_CUTOFF = 0.85 #Expected Value cutoff parameter
+        self.MAX_CONSTRAINTS = 8 #parameter for the maximum number of constraints we will choose to take.
+        self.CHOOSE_PENALTIES = [0.3, 0.6, 0.95] #heuristic value for likelihood if both adjacent cards are missing from your hand, if one is missing, and if both are present, respectively
+
+
 
     #def choose_discard(self, cards: list[str], constraints: list[str]):
     def choose_discard(self, cards, constraints):
@@ -33,8 +40,7 @@ class Player:
         Returns:
             list[int]: Return the list of constraint cards that you wish to keep. (can look at the default player logic to understand.)
         """
-
-        maxConstraints = 8 #parameter for the maximum number of constraints we will choose to take.
+        maxConstraints = self.MAX_CONSTRAINTS 
         tentative_constraints = [] #maintains value and constraint
 
         for constraint in constraints:
@@ -46,8 +52,9 @@ class Player:
                     contradictions.append(tent_constr)
                     total_contradiction_val += tent_constr[0]
 
-            #only add to constraints if the average value of constraints it contradicts is exceeded
-            if len(contradictions)==0 and value>0 or len(contradictions)>0 and value >= total_contradiction_val/len(contradictions):
+            #only add to constraints if the total value of constraints it contradicts is exceeded
+            #old conditional: if len(contradictions)==0 and value>0 or len(contradictions)>0 and value >= total_contradiction_val/len(contradictions):
+            if value > total_contradiction_val:
                 for contradiction in contradictions:
                     tentative_constraints.remove(contradiction)
                 if len(contradictions)>0:
@@ -78,10 +85,11 @@ class Player:
                     return True
         return False
     
+    #returns a number between 0 and 1 for how good a constraint is at the start of game
     def eval_constraint(self, constraint, hand): #returns a number denoting the value of this constraint
-        penalty00 = 0.3 #heuristic value for likelihood if both adjacent cards are missing from your hand
-        penalty01 = 0.6 #heuristic value for likelihood if one adjacent card is missing from your hand
-        penalty11 = .95 #heuristic value for likelihood if both cards are present in your hand
+        penalty00 = self.CHOOSE_PENALTIES[0] #penalty if both adjacent cards are missing from your hand
+        penalty01 = self.CHOOSE_PENALTIES[1] #penalty if one adjacent card is missing from your hand
+        penalty11 = self.CHOOSE_PENALTIES[2] #penalty if both cards are present in your hand
         arr = constraint.split('<')
         scores = [1,3,6,12]
         win_val = scores[len(arr)-2] #the value you get if you win
