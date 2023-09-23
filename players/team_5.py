@@ -340,35 +340,27 @@ class Player:
     
     #getAvailSpots: leftpos, rightpos: 0-11 or -1. If leftpos or rightpos are -1 it disregards that side
     #returns it in the full 24 long list ordering. Leftpos means the position 
-    def getAvailSpots(self, leftpos, rightpos, territory):
-        territory_array = np.array(territory)
-        available_hours = np.where(territory_array == 4)[0]
+    def getAvailSpots(self, leftpos, rightpos, open_slots):
+        available_hours = set(open_slots)
         if leftpos != -1:
             totheleft = self.five_indices(leftpos+1, False)
-            available_hours = self.intersection(available_hours, totheleft)
+            available_hours = available_hours.intersection(totheleft)
         if rightpos != -1:
             totheright = self.five_indices(rightpos+1, True)
-            available_hours = self.intersection(available_hours, totheright)
+            available_hours = available_hours.intersection(totheright)
         return available_hours
             
     #helper function
-    def five_indices(self, j, before): #j a clock position 1-12, before Boolean for the 5 before (True) or 5 after (False).
-        if (before):
-            if j>=5:
-                checklist = list(range(j-5,j)) + list(range(j+7,j+12))
-            else:
-                checklist = list(range(7+j,12)) + list(range(j)) + list(range(19+j,24)) + list(range(12, j+12))
+    def five_indices(self, j, before): #j a clock position 0-11 (0 is 12), before Boolean for the 5 before (True) or 5 after (False).
+        checklist = set()
+        if not before:
+            for i in range(j,j+5):
+                checklist.add(i%12)
         else:
-            if j <= 6:
-                checklist = list(range(j+1, j+6)) + list(range(j+13,j+18))
-            else:
-                checklist = list(range(j+1,12)) + list(range(0, j-6)) + list(range(j+13,24)) + list(range(12,j+6))
+            for i in range(j - 6, j-1):
+                checklist.add(i % 12)
         return checklist
 
-    #helper function
-    def intersection(self, lst1, lst2):
-        lst3 = [value for value in lst1 if value in lst2]
-        return lst3
 
     def get_highest_move(self, state, consts, hand):
         # takes in converted constraint
@@ -408,7 +400,7 @@ class Player:
 
             return highest_move
 
-    def calc_ev(self, state, consts, hand, open_slots, where):
+    def calc_ev(self, state, consts, hand, where, open_slots):
         total_ev = 0
         points = [1, 3, 6, 12]
         for const in consts:
@@ -428,4 +420,54 @@ class Player:
                 else:
                     total_ev -= 1
                 pass
+            #insert constraint checker
 
+            #use count successes to get possible cases
+            #divide count successes by combinations of ways to play open slots choose num 1 and 0
+
+    def count_successes(self, state, conv_const, where, open_slots):
+        total_successes = 0
+
+        if '1' not in conv_const[1] and '0' not in conv_const[1]:
+            for i in range(len(conv_const[0] - 1)):
+                dist_diff = where[conv_const[0][i]] - where[conv_const[0][i + 1]]
+                if dist_diff < 0:
+                    dist_diff += 12
+                if not (dist_diff <= 5 and dist_diff != 0):
+                    return 0
+            return 1
+
+
+        for i in range(len(conv_const)):
+            letter = conv_const[0][i]
+            if conv_const[1][i] != "2":
+                right_pos = -1
+                left_pos = -1
+                if i != 0:
+                    if conv_const[1][i-1] == '2':
+                        left_pos = where[conv_const[0][i-1]]
+                if i != len(conv_const[1])-1:
+                    if conv_const[1][i+1] == '2':
+                        right_pos = where[conv_const[0][i+1]]
+                valid_slots = self.getAvailSpots(left_pos, right_pos, open_slots)
+                if len(valid_slots) == 0:
+                    return 0
+                for slot in valid_slots:
+                    if state[slot][0] == 'Z':
+                        state[slot][0] = letter
+                    else:
+                        state[slot][1] = letter
+                    temp_open_slots = open_slots.copy()
+                    temp_open_slots.remove(slot)
+                    where[letter] = slot
+                    const_as_list = list(conv_const[1])
+                    const_as_list[i] = '2'
+                    temp_conv_const = (conv_const[0],''.join(const_as_list))
+                    successes = self.count_successes(state, temp_conv_const, where, temp_open_slots)
+                    total_successes += open_slots.count(slot) * successes
+                    del where[letter]
+                    if state[slot][0] == letter:
+                        state[slot][0] = 'Z'
+                    else:
+                        state[slot][1] = 'Z'
+                return total_successes
