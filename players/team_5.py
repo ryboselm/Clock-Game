@@ -130,6 +130,151 @@ class Player:
                 num += '0'
         return (lets, num)
 
+    #def play(self, cards: list[str], constraints: list[str], state: list[str], territory: list[int]) -> Tuple[int, str]:
+    def play(self, cards, constraints, state, territory):
+        """Function which based n current game state returns the distance and angle, the shot must be played
+
+        Args:
+            score (int): Your total score including current turn
+            cards (list): A list of letters you have been given at the beginning of the game
+            state (list(list)): The current letters at every hour of the 24 hour clock
+            territory (list(int)): The current occupiers of every slot in the 24 hour clock. 1,2,3 for players 1,2 and 3. 4 if position unoccupied.
+            constraints(list(str)): The constraints assigned to the given player
+
+        Returns:
+            Tuple[int, str]: Return a tuple of slot from 1-12 and letter to be played at that slot
+        """
+        move = self.get_highest_move(state, constraints, cards)
+        if move == ('', ''):
+            print("An error with move selection occurred, playing randomly")
+            letter = self.rng.choice(cards)
+            territory_array = np.array(territory)
+            available_hours = np.where(territory_array == 4)
+            hour = self.rng.choice(available_hours[0])
+            hour = hour%12 if hour%12!=0 else 12
+            return hour, letter
+        else:
+            return move
+
+    def get_highest_move(self, state, consts, hand):
+        # takes in converted constraint
+        # pick letter to try
+        open_slots = []
+        where = {}
+        for i in range(len(state)):
+            for j in state[i]:
+                if j == 'Z':
+                    open_slots.append(i)
+                else:
+                    where[j] = i
+
+        highest_ev = -100000
+        highest_move = ('','')
+        for letter in hand:
+            for slot in set(open_slots):
+                if state[slot][0] == 'Z':
+                    state[slot][0] = letter
+                else:
+                    state[slot][1] = letter
+                temp_hand = hand.copy()
+                temp_hand.remove(letter)
+                temp_open_slots = open_slots.copy()
+                temp_open_slots.remove(slot)
+                where[letter] = slot
+                move_ev = self.calc_ev(state, consts, temp_hand, where, temp_open_slots)
+                del where[letter]
+                if state[slot][0] == letter:
+                    state[slot][0] = 'Z'
+                else:
+                    state[slot][1] = 'Z'
+
+                if move_ev > highest_ev:
+                    highest_ev = move_ev
+                    highest_move = (slot, letter)
+
+        return highest_move
+
+    def calc_ev(self, state, consts, hand, where, open_slots):
+        total_ev = 0
+        points = [1, 3, 6, 12]
+        for const in consts:
+            cc = self.conv_const(state, const, hand)
+
+            # check if all letters are on the board
+            if '1' not in cc[1] and '0' not in cc[1]:
+                failed = False
+                for i in range(len(cc[0] - 1)):
+                    
+                    if dist_diff < 0:
+                        dist_diff += 12
+                    if not (dist_diff <= 5 and dist_diff != 0):
+                        failed = True
+                if not failed:
+                    total_ev += points[len(cc[1]) - 2]
+                else:
+                    total_ev -= 1
+                continue
+
+            #checks each subconstraint individually to see if already violated
+            for i in range(len(cc[0])-1):
+                if cc[1][i] == '2' and cc[1][i+1] == '2':
+                    dist_diff = where[cc[0][i]] - where[cc[0][i + 1]]
+                    if dist_diff < 0:
+                        dist_diff+=12
+                    if not (dist_diff <=5 and dist_diff != 0): #at least one of the constraints was invalid
+                        total_ev -=1
+                        continue
+            
+            #no constraint should be already violated past this point!
+
+            num_open_slots = len(open_slots)
+            num_letters_needed = len(cc[1]) - cc[1].count("2") #number of unsatisfied positions
+            ways_to_fill = 1
+            for i in range(num_letters_needed): #e.g. 10 open slots, need to put 2 letters down => 10*9
+                ways_to_fill*=num_open_slots
+                num_open_slots-=1
+
+            successes = self.count_successes(state, cc, where, open_slots) #call into recursive function
+            p_satisfy = successes / ways_to_fill
+            ev = p_satisfy*points[len(cc[1]) - 2] - (1-p_satisfy)
+            total_ev += ev
+        
+        return total_ev
+
+
+    #getAvailSpots: leftpos, rightpos: 0-11 or -1. If leftpos or rightpos are -1 it disregards that side
+    #returns it in the full 24 long list ordering. Leftpos means the position 
+    def getAvailSpots(self, leftpos, rightpos, territory):
+        territory_array = np.array(territory)
+        available_hours = np.where(territory_array == 4)[0]
+        if leftpos != -1:
+            totheleft = self.five_indices(leftpos+1, False)
+            available_hours = self.intersection(available_hours, totheleft)
+        if rightpos != -1:
+            totheright = self.five_indices(rightpos+1, True)
+            available_hours = self.intersection(available_hours, totheright)
+        return available_hours
+            
+    #helper function
+    def five_indices(self, j, before): #j a clock position 1-12, before Boolean for the 5 before (True) or 5 after (False).
+        if (before):
+            if j>=5:
+                checklist = list(range(j-5,j)) + list(range(j+7,j+12))
+            else:
+                checklist = list(range(7+j,12)) + list(range(j)) + list(range(19+j,24)) + list(range(12, j+12))
+        else:
+            if j <= 6:
+                checklist = list(range(j+1, j+6)) + list(range(j+13,j+18))
+            else:
+                checklist = list(range(j+1,12)) + list(range(0, j-6)) + list(range(j+13,24)) + list(range(12,j+6))
+        return checklist
+
+    #helper function
+    def intersection(self, lst1, lst2):
+        lst3 = [value for value in lst1 if value in lst2]
+        return lst3
+
+
     def pick_slot(self, state, const, hand, territory):
         # takes in converted constraint
         # returns best (position,letter) to try and its "odds" of winning
@@ -328,112 +473,3 @@ class Player:
                         else:
                             most_i = slot
             return (((most_i, const[0][highest_i]), odds))
-
-
-    #def play(self, cards: list[str], constraints: list[str], state: list[str], territory: list[int]) -> Tuple[int, str]:
-    def play(self, cards, constraints, state, territory):
-        """Function which based n current game state returns the distance and angle, the shot must be played
-
-        Args:
-            score (int): Your total score including current turn
-            cards (list): A list of letters you have been given at the beginning of the game
-            state (list(list)): The current letters at every hour of the 24 hour clock
-            territory (list(int)): The current occupiers of every slot in the 24 hour clock. 1,2,3 for players 1,2 and 3. 4 if position unoccupied.
-            constraints(list(str)): The constraints assigned to the given player
-
-        Returns:
-            Tuple[int, str]: Return a tuple of slot from 1-12 and letter to be played at that slot
-        """
-        return self.get_highest_move(state, constraints, cards)
-    
-    #getAvailSpots: leftpos, rightpos: 0-11 or -1. If leftpos or rightpos are -1 it disregards that side
-    #returns it in the full 24 long list ordering. Leftpos means the position 
-    def getAvailSpots(self, leftpos, rightpos, territory):
-        territory_array = np.array(territory)
-        available_hours = np.where(territory_array == 4)[0]
-        if leftpos != -1:
-            totheleft = self.five_indices(leftpos+1, False)
-            available_hours = self.intersection(available_hours, totheleft)
-        if rightpos != -1:
-            totheright = self.five_indices(rightpos+1, True)
-            available_hours = self.intersection(available_hours, totheright)
-        return available_hours
-            
-    #helper function
-    def five_indices(self, j, before): #j a clock position 1-12, before Boolean for the 5 before (True) or 5 after (False).
-        if (before):
-            if j>=5:
-                checklist = list(range(j-5,j)) + list(range(j+7,j+12))
-            else:
-                checklist = list(range(7+j,12)) + list(range(j)) + list(range(19+j,24)) + list(range(12, j+12))
-        else:
-            if j <= 6:
-                checklist = list(range(j+1, j+6)) + list(range(j+13,j+18))
-            else:
-                checklist = list(range(j+1,12)) + list(range(0, j-6)) + list(range(j+13,24)) + list(range(12,j+6))
-        return checklist
-
-    #helper function
-    def intersection(self, lst1, lst2):
-        lst3 = [value for value in lst1 if value in lst2]
-        return lst3
-
-    def get_highest_move(self, state, consts, hand):
-        # takes in converted constraint
-        # pick letter to try
-        open_slots = []
-        where = {}
-        for i in range(len(state)):
-            for j in state[i]:
-                if j == 'Z':
-                    open_slots.append(i)
-                else:
-                    where[j] = i
-
-        highest_ev = -100000
-        highest_move = ('','')
-        for letter in hand:
-            for slot in set(open_slots):
-                if state[slot][0] == 'Z':
-                    state[slot][0] = letter
-                else:
-                    state[slot][1] = letter
-                temp_hand = hand.copy()
-                temp_hand.remove(letter)
-                temp_open_slots = open_slots.copy()
-                temp_open_slots.remove(slot)
-                where[letter] = slot
-                move_ev = self.calc_ev(state, consts, temp_hand, where, temp_open_slots)
-                del where[letter]
-                if state[slot][0] == letter:
-                    state[slot][0] = 'Z'
-                else:
-                    state[slot][1] = 'Z'
-
-                if move_ev > highest_ev:
-                    highest_ev = move_ev
-                    highest_move = (slot, letter)
-
-            return highest_move
-
-    def calc_ev(self, state, consts, hand, open_slots, where):
-        total_ev = 0
-        points = [1, 3, 6, 12]
-        for const in consts:
-            cc = self.conv_const(state, const, hand)
-
-            # all letters are on the board
-            if '1' not in cc[1] and '0' not in cc[1]:
-                failed = False
-                for i in range(len(cc[0] - 1)):
-                    dist_diff = where[cc[0][i]] - where[cc[0][i + 1]]
-                    if dist_diff < 0:
-                        dist_diff += 12
-                    if not (dist_diff <= 5 and dist_diff != 0):
-                        failed = True
-                if not failed:
-                    total_ev += points[len(cc[1]) - 2]
-                else:
-                    total_ev -= 1
-                pass
-
