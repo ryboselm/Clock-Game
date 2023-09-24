@@ -141,7 +141,12 @@ class Player:
         Returns:
             Tuple[int, str]: Return a tuple of slot from 1-12 and letter to be played at that slot
         """
+        new_state = []
+        for i in range(len(state)/2):
+            new_state.append([state[i],state[i+12]])
+        state = new_state
         move = self.get_highest_move(state, constraints, cards)
+
         if move == ('', ''):
             print("An error with move selection occurred, playing randomly")
             letter = self.rng.choice(cards)
