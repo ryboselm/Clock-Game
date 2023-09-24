@@ -20,14 +20,11 @@ class Player:
             precomp_dir (str): Directory path to store/load precomputation
         """
         self.rng = rng
-
         ### Player Parameters
 
         self.EV_CUTOFF = 0.85 #Expected Value cutoff parameter
         self.MAX_CONSTRAINTS = 8 #parameter for the maximum number of constraints we will choose to take.
         self.CHOOSE_PENALTIES = [0.3, 0.6, 0.95] #heuristic value for likelihood if both adjacent cards are missing from your hand, if one is missing, and if both are present, respectively
-
-
 
     #def choose_discard(self, cards: list[str], constraints: list[str]):
     def choose_discard(self, cards, constraints):
