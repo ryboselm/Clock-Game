@@ -142,7 +142,7 @@ class Player:
             Tuple[int, str]: Return a tuple of slot from 1-12 and letter to be played at that slot
         """
         new_state = []
-        for i in range(len(state)/2):
+        for i in range(12):
             new_state.append([state[i],state[i+12]])
         state = new_state
         move = self.get_highest_move(state, constraints, cards)
@@ -205,8 +205,8 @@ class Player:
             # check if all letters are on the board
             if '1' not in cc[1] and '0' not in cc[1]:
                 failed = False
-                for i in range(len(cc[0] - 1)):
-                    
+                for i in range(len(cc[0])-1):
+                    dist_diff = where[cc[0][i]] - where[cc[0][i + 1]]
                     if dist_diff < 0:
                         dist_diff *= -1
                     if not (dist_diff <= 5 and dist_diff != 0):
@@ -272,7 +272,7 @@ class Player:
         total_successes = 0
 
         if '1' not in conv_const[1] and '0' not in conv_const[1]:
-            for i in range(len(conv_const[0] - 1)):
+            for i in range(len(conv_const[0]) - 1):
                 dist_diff = where[conv_const[0][i]] - where[conv_const[0][i + 1]]
                 if dist_diff < 0:
                     dist_diff += 12
@@ -314,3 +314,4 @@ class Player:
                     else:
                         state[slot][1] = 'Z'
                 return total_successes
+        return total_successes
