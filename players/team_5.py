@@ -6,7 +6,7 @@ import heapq
 class Player:
 
 
-    def __init__(self, rng: np.random.Generator) -> None:
+    def __init__(self, rng: np.random.Generator, choose_pens) -> None:
         """Initialise the player with given skill.
 
         Args:
@@ -24,7 +24,7 @@ class Player:
 
         self.EV_CUTOFF = 0.85 #Expected Value cutoff parameter
         self.MAX_CONSTRAINTS = 8 #parameter for the maximum number of constraints we will choose to take.
-        self.CHOOSE_PENALTIES = [0.2, 0.7, 0.9] #heuristic value for likelihood if both adjacent cards are missing from your hand, if one is missing, and if both are present, respectively
+        self.CHOOSE_PENALTIES = choose_pens #heuristic value for likelihood if both adjacent cards are missing from your hand, if one is missing, and if both are present, respectively
 
     #def choose_discard(self, cards: list[str], constraints: list[str]):
     def choose_discard(self, cards, constraints):
@@ -65,9 +65,9 @@ class Player:
                 heapq.heappop(tentative_constraints)
 
         final_constraints = [constr[1] for constr in tentative_constraints]
-        print("hand", cards)
-        print("final constraints:", tentative_constraints)
-        print(" ")
+        #print("hand", cards)
+        #print("final constraints:", tentative_constraints)
+        #print(" ")
         return final_constraints
     
     #Checks whether two constraints contradict one another or not. Returns True if there is a contradiction.
@@ -195,7 +195,7 @@ class Player:
                 if move_ev > highest_ev:
                     highest_ev = move_ev
                     highest_move = (slot, letter)
-        print("highest ev move", highest_ev, highest_move)
+        #print("highest ev move", highest_ev, highest_move)
         return highest_move
 
     def calc_ev(self, state, consts, hand, where, open_slots):
