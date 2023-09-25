@@ -24,7 +24,7 @@ class Player:
 
         self.EV_CUTOFF = 0.85 #Expected Value cutoff parameter
         self.MAX_CONSTRAINTS = 8 #parameter for the maximum number of constraints we will choose to take.
-        self.CHOOSE_PENALTIES = [0.3, 0.6, 0.95] #heuristic value for likelihood if both adjacent cards are missing from your hand, if one is missing, and if both are present, respectively
+        self.CHOOSE_PENALTIES = [0.2, 0.7, 0.9] #heuristic value for likelihood if both adjacent cards are missing from your hand, if one is missing, and if both are present, respectively
 
     #def choose_discard(self, cards: list[str], constraints: list[str]):
     def choose_discard(self, cards, constraints):
@@ -82,7 +82,7 @@ class Player:
                     return True
         return False
     
-    #returns a number between 0 and 1 for how good a constraint is at the start of game
+    #returns an expected value for how good a constraint is at the start of game
     def eval_constraint(self, constraint, hand): #returns a number denoting the value of this constraint
         penalty00 = self.CHOOSE_PENALTIES[0] #penalty if both adjacent cards are missing from your hand
         penalty01 = self.CHOOSE_PENALTIES[1] #penalty if one adjacent card is missing from your hand
@@ -172,19 +172,21 @@ class Player:
 
         highest_ev = -100000
         highest_move = ('','')
+        temp_hand = hand.copy()
         for letter in hand:
             for slot in set(open_slots):
                 if state[slot][0] == 'Z':
                     state[slot][0] = letter
                 else:
                     state[slot][1] = letter
-                temp_hand = hand.copy()
+
                 temp_hand.remove(letter)
-                temp_open_slots = open_slots.copy()
-                temp_open_slots.remove(slot)
+                open_slots.remove(slot)
                 where[letter] = slot
-                move_ev = self.calc_ev(state, consts, temp_hand, where, temp_open_slots)
+                move_ev = self.calc_ev(state, consts, temp_hand, where, open_slots)
                 del where[letter]
+                temp_hand.append(letter)
+                open_slots.append(slot)
                 if state[slot][0] == letter:
                     state[slot][0] = 'Z'
                 else:
@@ -193,7 +195,7 @@ class Player:
                 if move_ev > highest_ev:
                     highest_ev = move_ev
                     highest_move = (slot, letter)
-
+        print("highest ev move", highest_ev, highest_move)
         return highest_move
 
     def calc_ev(self, state, consts, hand, where, open_slots):
@@ -206,9 +208,7 @@ class Player:
             if '1' not in cc[1] and '0' not in cc[1]:
                 failed = False
                 for i in range(len(cc[0])-1):
-                    dist_diff = where[cc[0][i]] - where[cc[0][i + 1]]
-                    if dist_diff < 0:
-                        dist_diff *= -1
+                    dist_diff = (where[cc[0][i+1]] - where[cc[0][i]])%12
                     if not (dist_diff <= 5 and dist_diff != 0):
                         failed = True
                 if not failed:
@@ -220,9 +220,7 @@ class Player:
             #checks each subconstraint individually to see if already violated
             for i in range(len(cc[0])-1):
                 if cc[1][i] == '2' and cc[1][i+1] == '2':
-                    dist_diff = where[cc[0][i]] - where[cc[0][i + 1]]
-                    if dist_diff < 0:
-                        dist_diff*= -1
+                    dist_diff = (where[cc[0][i+1]] - where[cc[0][i]])%12
                     if not (dist_diff <=5 and dist_diff != 0): #at least one of the constraints was invalid
                         total_ev -=1
                         continue
@@ -235,12 +233,13 @@ class Player:
             for i in range(num_letters_needed): #e.g. 10 open slots, need to put 2 letters down => 10*9
                 ways_to_fill*=num_open_slots
                 num_open_slots-=1
+            #if 0 letters needed, then ways_to_fill defaults to 1
 
             successes = self.count_successes(state, cc, where, open_slots) #call into recursive function
-            p_satisfy = successes / ways_to_fill
+            p_satisfy = max(successes / ways_to_fill, 1) #in case count_successes breaks and returns something crazy
+            #print(successes/ways_to_fill)
             ev = p_satisfy*points[len(cc[1]) - 2] - (1-p_satisfy)
             total_ev += ev
-        
         return total_ev
 
     #def play(self, cards: list[str], constraints: list[str], state: list[str], territory: list[int]) -> Tuple[int, str]:
@@ -249,10 +248,10 @@ class Player:
     def getAvailSpots(self, leftpos, rightpos, open_slots):
         available_hours = set(open_slots)
         if leftpos != -1:
-            totheleft = self.five_indices(leftpos+1, False)
+            totheleft = self.five_indices(leftpos, False)
             available_hours = available_hours.intersection(totheleft)
         if rightpos != -1:
-            totheright = self.five_indices(rightpos+1, True)
+            totheright = self.five_indices(rightpos, True)
             available_hours = available_hours.intersection(totheright)
         return available_hours
             
@@ -260,10 +259,10 @@ class Player:
     def five_indices(self, j, before): #j a clock position 0-11 (0 is 12), before Boolean for the 5 before (True) or 5 after (False).
         checklist = set()
         if not before:
-            for i in range(j,j+5):
+            for i in range(j+1,j+6):
                 checklist.add(i%12)
         else:
-            for i in range(j - 6, j-1):
+            for i in range(j - 5, j):
                 checklist.add(i % 12)
         return checklist
 
@@ -271,17 +270,17 @@ class Player:
     def count_successes(self, state, conv_const, where, open_slots):
         total_successes = 0
 
+        #if the constraint is already filled
         if '1' not in conv_const[1] and '0' not in conv_const[1]:
+            #check if all constraints are satisfied
             for i in range(len(conv_const[0]) - 1):
-                dist_diff = where[conv_const[0][i]] - where[conv_const[0][i + 1]]
-                if dist_diff < 0:
-                    dist_diff += 12
+                dist_diff = (where[conv_const[0][i+1]] - where[conv_const[0][i]])%12
                 if not (dist_diff <= 5 and dist_diff != 0):
                     return 0
             return 1
 
 
-        for i in range(len(conv_const)):
+        for i in range(len(conv_const[0])): #loops until it finds the first non-filled constraint
             letter = conv_const[0][i]
             if conv_const[1][i] != "2":
                 right_pos = -1
@@ -296,22 +295,28 @@ class Player:
                 if len(valid_slots) == 0:
                     return 0
                 for slot in valid_slots:
+                    #fill in state
                     if state[slot][0] == 'Z':
                         state[slot][0] = letter
                     else:
                         state[slot][1] = letter
-                    temp_open_slots = open_slots.copy()
-                    temp_open_slots.remove(slot)
+                    open_slots.remove(slot)
                     where[letter] = slot
                     const_as_list = list(conv_const[1])
                     const_as_list[i] = '2'
                     temp_conv_const = (conv_const[0],''.join(const_as_list))
-                    successes = self.count_successes(state, temp_conv_const, where, temp_open_slots)
-                    total_successes += open_slots.count(slot) * successes
+
+                    successes = self.count_successes(state, temp_conv_const, where, open_slots)
+
+                    open_slots.append(slot) #puts slot back
                     del where[letter]
+                    total_successes += successes
+                    #empty state again
                     if state[slot][0] == letter:
                         state[slot][0] = 'Z'
                     else:
                         state[slot][1] = 'Z'
+                #return after iterating over all valid placements of this letter
                 return total_successes
-        return total_successes
+
+        return total_successes #technically this shouldn't be reachable
