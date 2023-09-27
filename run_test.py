@@ -1,7 +1,7 @@
 import subprocess
 import numpy as np
 
-rng_generator = np.random.default_rng(16) #seeds the randomness of the randomness
+rng_generator = np.random.default_rng(17) #seeds the randomness of the randomness
 rounds = 5
 players = [5, 0, 0]
 num_constraints = 30
