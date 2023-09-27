@@ -24,6 +24,7 @@ class Player:
         ### Player Parameters
 
         self.MAX_CONSTRAINTS = 15 #parameter for the maximum number of constraints we will choose to take.
+        self.MAX_CONSTRAINT_SEARCH = 500 #don't look at more than 500 constraints total
         self.CHOOSE_PENALTIES = [0.43, 0.17, 0.95] #heuristic value for likelihood if both adjacent cards are missing from your hand, if one is missing, and if both are present, respectively
 
     #def choose_discard(self, cards: list[str], constraints: list[str]):
@@ -39,8 +40,10 @@ class Player:
         """
         maxConstraints = self.MAX_CONSTRAINTS 
         tentative_constraints = [] #maintains value and constraint
+        num_constraints = min(self.MAX_CONSTRAINT_SEARCH, len(constraints)) #artifically limit the number of constraints seen to 500, seeing more causes problems for some reason
 
-        for constraint in constraints:
+
+        for constraint in constraints[0:num_constraints]:
             value = self.eval_constraint(constraint, cards) #value of a given constraint according to our heuristic
             contradictions = []
             total_contradiction_val = 0
@@ -70,7 +73,7 @@ class Player:
         print(" ")
         return final_constraints
     
-    #Checks whether two constraints contradict one another or not. Returns True if there is a contradiction.
+    #Checks whether two constraints directly contradict one another or not. Returns True if there is a contradiction.
     def contradicting_constraints(self, con1, con2):
         arr1 = con1.split('<')
         arr2 = con2.split('<')
@@ -82,7 +85,6 @@ class Player:
                     return True
         return False
     
-    #returns an expected value for how good a constraint is at the start of game
     #returns an expected value for how good a constraint is at the start of game
     def eval_constraint(self, constraint, hand): #returns a number denoting the value of this constraint
         penalty00 = self.CHOOSE_PENALTIES[0] #penalty if two adjacent cards are missing from your hand
@@ -145,6 +147,7 @@ class Player:
         Returns:
             Tuple[int, str]: Return a tuple of slot from 1-12 and letter to be played at that slot
         """
+        #processes state into a 12x2 list since that's what we coded for originally
         new_state = []
         for i in range(12):
             new_state.append([state[i],state[i+12]])
@@ -163,8 +166,9 @@ class Player:
             return move
 
     def get_highest_move(self, state, consts, hand):
-        # takes in converted constraint
-        # pick letter to try
+        # tries every (letter, slot) combo
+
+        #get all open slots right now
         open_slots = []
         where = {}
         for i in range(len(state)):
@@ -174,14 +178,36 @@ class Player:
                 else:
                     where[j] = i
 
-        consts_subset = self.rng.choice(consts, size=min(len(consts), 5)) #take a RANDOM 5 constraints to look at when calculating the EV since it's too damn slow
 
+        #prune consts (constraints) however we can
+        #1)
+        #consts_subset = self.rng.choice(consts, size=min(len(consts), 5)) #take a RANDOM 5 constraints to look at when calculating the EV since it's too damn slow
+        
+        #2)
+        consts_subset = consts
+
+        #3) discards the constraints that don't have something in hand relevant right now. May do nothing since all would probably have something relevant
+        # consts_subset = []
+        # for const in consts:
+        #     arr = const.split("<")
+        #     keep = False
+        #     for letter in arr:
+        #         if letter in hand:
+        #             keep = True
+        #             break
+        #     if keep:
+        #         consts_subset.append(const)
+    
 
         highest_ev = -100000
         highest_move = ('','')
         temp_hand = hand.copy()
-        for letter in hand:
-            for slot in set(open_slots):
+        for letter in hand: #up to 8 choices
+            for slot in set(open_slots): #up to 12 choices
+                #can we do fast invalidation of a choice?
+                #if it does not satisfy any subconstraint?
+
+
                 if state[slot][0] == 'Z':
                     state[slot][0] = letter
                 else:
@@ -190,7 +216,7 @@ class Player:
                 temp_hand.remove(letter)
                 open_slots.remove(slot)
                 where[letter] = slot
-                move_ev = self.calc_ev(state, consts_subset, temp_hand, where, open_slots)
+                move_ev = self.calc_ev(state, consts_subset, temp_hand, where, open_slots, letter)
                 del where[letter]
                 temp_hand.append(letter)
                 open_slots.append(slot)
@@ -205,11 +231,13 @@ class Player:
         print("highest ev move", highest_ev, highest_move)
         return highest_move
 
-    def calc_ev(self, state, consts, hand, where, open_slots):
+    def calc_ev(self, state, consts, hand, where, open_slots, played_letter):
         total_ev = 0
         points = [1, 3, 6, 12]
         for const in consts:
             cc = self.conv_const(state, const, hand)
+
+            #did we violate this constraint by making this play?
 
             # check if all letters are on the board
             if '1' not in cc[1] and '0' not in cc[1]:
@@ -225,14 +253,25 @@ class Player:
                 continue
 
             #checks each subconstraint individually to see if already violated
+            failed = False
             for i in range(len(cc[0])-1):
                 if cc[1][i] == '2' and cc[1][i+1] == '2':
                     dist_diff = (where[cc[0][i+1]] - where[cc[0][i]])%12
                     if not (dist_diff <=5 and dist_diff != 0): #at least one of the constraints was invalid
                         total_ev -=1
-                        continue
+                        failed = True
+                        break
+            if failed:
+                continue
             
+
             #no constraint should be already violated past this point!
+
+
+            #another fastpath
+            if played_letter not in cc[0]:
+                continue
+            #in theory the EV should not have been affected by this change too much
 
             num_open_slots = len(open_slots)
             num_letters_needed = len(cc[1]) - cc[1].count("2") #number of unsatisfied positions
@@ -240,10 +279,9 @@ class Player:
             for i in range(num_letters_needed): #e.g. 10 open slots, need to put 2 letters down => 10*9
                 ways_to_fill*=num_open_slots
                 num_open_slots-=1
-            #if 0 letters needed, then ways_to_fill defaults to 1
-            #starttime = time.time()
-            successes = self.count_successes(state, cc, where, open_slots) #call into recursive function
-            #print("count_successes:", time.time()-starttime)
+
+            successes = self.count_successes(state, cc, where, open_slots) #call into recursive function, runs very slow :(
+
             p_satisfy = max(successes / ways_to_fill, 1) #in case count_successes breaks and returns something crazy
             #print(successes/ways_to_fill)
             ev = p_satisfy*points[len(cc[1]) - 2] - (1-p_satisfy)
@@ -312,7 +350,7 @@ class Player:
                     where[letter] = slot
                     const_as_list = list(conv_const[1])
                     const_as_list[i] = '2'
-                    temp_conv_const = (conv_const[0],''.join(const_as_list))
+                    temp_conv_const = (conv_const[0],''.join(const_as_list)) #new converted constraint
 
                     successes = self.count_successes(state, temp_conv_const, where, open_slots)
 
