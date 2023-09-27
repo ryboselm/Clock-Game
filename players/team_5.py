@@ -2,6 +2,7 @@ from tokenize import String
 import numpy as np
 from typing import Tuple, List
 import heapq
+import time
 
 class Player:
 
@@ -173,6 +174,9 @@ class Player:
                 else:
                     where[j] = i
 
+        consts_subset = self.rng.choice(consts, size=min(len(consts), 5)) #take a RANDOM 5 constraints to look at when calculating the EV since it's too damn slow
+
+
         highest_ev = -100000
         highest_move = ('','')
         temp_hand = hand.copy()
@@ -186,7 +190,7 @@ class Player:
                 temp_hand.remove(letter)
                 open_slots.remove(slot)
                 where[letter] = slot
-                move_ev = self.calc_ev(state, consts, temp_hand, where, open_slots)
+                move_ev = self.calc_ev(state, consts_subset, temp_hand, where, open_slots)
                 del where[letter]
                 temp_hand.append(letter)
                 open_slots.append(slot)
@@ -237,8 +241,9 @@ class Player:
                 ways_to_fill*=num_open_slots
                 num_open_slots-=1
             #if 0 letters needed, then ways_to_fill defaults to 1
-
+            #starttime = time.time()
             successes = self.count_successes(state, cc, where, open_slots) #call into recursive function
+            #print("count_successes:", time.time()-starttime)
             p_satisfy = max(successes / ways_to_fill, 1) #in case count_successes breaks and returns something crazy
             #print(successes/ways_to_fill)
             ev = p_satisfy*points[len(cc[1]) - 2] - (1-p_satisfy)
