@@ -2,6 +2,7 @@ from tokenize import String
 import numpy as np
 from typing import Tuple, List
 import heapq
+import time
 
 class Player:
 
@@ -247,7 +248,9 @@ class Player:
 
 
             #just need to get an accurate guess of p_satisfy!!!
+            start_time = time.time()
             successes = self.count_successes(state, cc, where, open_slots) #call into recursive function, very costly
+            print("count_successes:", time.time()-start_time, "s.")
             p_satisfy = max(successes / ways_to_fill, 1) #in case count_successes breaks and returns something crazy
             #print(successes/ways_to_fill)
             ev = p_satisfy*points[len(cc[1]) - 2] - (1-p_satisfy)
