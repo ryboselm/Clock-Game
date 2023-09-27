@@ -35,3 +35,17 @@ params: [0.4, 0.8, 0.8] avg score after 5 rounds: 9.2
 params: [0.4, 0.8, 0.9] avg score after 5 rounds: 17.2
 params: [0.4, 0.8, 1.0] avg score after 5 rounds: 17.2
 params: [0.4, 0.8, 1.0] avg score after 100 rounds: 6.43
+params: [0.4, 0.8, 1.0] avg score after 5 rounds: 5.2
+params: [0.4, 0.8, 1.0] avg score after 5 rounds: 3.8
+params: [0.3, 0.5, 1.0] avg score after 10 rounds: 10.0
+params: [0.3, 0.5, 1.0] avg score after 10 rounds: 10.0
+params: [0.3, 0.6, 1.0] avg score after 10 rounds: 21.4
+params: [0.3, 0.6, 1.0] avg score after 5 rounds: 11.8
+params: [0.3, 0.6, 1.0] avg score after 5 rounds: 15.8
+params: [0.3, 0.6, 1.0] avg score after 5 rounds: 23.4
+params: [0.3, 0.6, 1.0] avg score after 5 rounds: 22.2
+params: [0.3, 0.6, 1.0] avg score after 5 rounds: 22.6
+params: [0.3, 0.6, 1.0] avg score after 5 rounds: 22.6
+params: [0.3, 0.6, 1.0] avg score after 5 rounds: 22.6
+params: [0.3, 0.6, 1.0] avg score after 5 rounds: 6.8
+params: [0.3, 0.6, 1.0] avg score after 5 rounds: 12.6

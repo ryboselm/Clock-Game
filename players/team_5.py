@@ -21,10 +21,8 @@ class Player:
         """
         self.rng = rng
         ### Player Parameters
-
-        self.EV_CUTOFF = 0.85 #Expected Value cutoff parameter
-        self.MAX_CONSTRAINTS = 8 #parameter for the maximum number of constraints we will choose to take.
-        self.CHOOSE_PENALTIES = choose_pens #heuristic value for likelihood if both adjacent cards are missing from your hand, if one is missing, and if both are present, respectively
+        self.MAX_CONSTRAINTS = choose_pens[3] #parameter for the maximum number of constraints we will choose to take.
+        self.CHOOSE_PENALTIES = choose_pens[0:3] #heuristic value for likelihood if both adjacent cards are missing from your hand, if one is missing, and if both are present, respectively
 
     #def choose_discard(self, cards: list[str], constraints: list[str]):
     def choose_discard(self, cards, constraints):
@@ -37,20 +35,22 @@ class Player:
         Returns:
             list[int]: Return the list of constraint cards that you wish to keep. (can look at the default player logic to understand.)
         """
-        maxConstraints = self.MAX_CONSTRAINTS 
+        maxConstraints = self.MAX_CONSTRAINTS
         tentative_constraints = [] #maintains value and constraint
+        num_constraints = len(constraints)
 
         for constraint in constraints:
             value = self.eval_constraint(constraint, cards) #value of a given constraint according to our heuristic
             contradictions = []
             total_contradiction_val = 0
             for tent_constr in tentative_constraints:
-                if self.contradicting_constraints(constraint, tent_constr[1]):
+                if self.contradicting_constraints(constraint, tent_constr[1], num_constraints):
                     contradictions.append(tent_constr)
                     total_contradiction_val += tent_constr[0]
 
-            #only add to constraints if the total value of constraints it contradicts is exceeded
-            #old conditional: if len(contradictions)==0 and value>0 or len(contradictions)>0 and value >= total_contradiction_val/len(contradictions):
+            #only add to constraints if the average value of constraints it contradicts is exceeded -- favors fewer constraints
+            #if len(contradictions)==0 and value>0 or len(contradictions)>0 and value >= total_contradiction_val/len(contradictions):
+            #only add to constraints if the TOTAL value of constraints it contradicts is exceeded -- favors keeping existing constraints in general
             if value > total_contradiction_val:
                 for contradiction in contradictions:
                     tentative_constraints.remove(contradiction)
@@ -71,7 +71,7 @@ class Player:
         return final_constraints
     
     #Checks whether two constraints contradict one another or not. Returns True if there is a contradiction.
-    def contradicting_constraints(self, con1, con2):
+    def contradicting_constraints(self, con1, con2, num_constraints):
         arr1 = con1.split('<')
         arr2 = con2.split('<')
         for i in range(len(arr1)-1):
@@ -84,18 +84,21 @@ class Player:
     
     #returns an expected value for how good a constraint is at the start of game
     def eval_constraint(self, constraint, hand): #returns a number denoting the value of this constraint
-        penalty00 = self.CHOOSE_PENALTIES[0] #penalty if both adjacent cards are missing from your hand
-        penalty01 = self.CHOOSE_PENALTIES[1] #penalty if one adjacent card is missing from your hand
-        penalty11 = self.CHOOSE_PENALTIES[2] #penalty if both cards are present in your hand
+        penalty00 = self.CHOOSE_PENALTIES[0] #penalty if two adjacent cards are missing from your hand
+        penalty010 = self.CHOOSE_PENALTIES[1] #penalty if two cards are missing around a card you own like 010
+        penalty01 = self.CHOOSE_PENALTIES[2] #penalty if you have your card adjacent to a missing card (but it's not the 010 case)
         arr = constraint.split('<')
+        n = len(arr)
         scores = [1,3,6,12]
         win_val = scores[len(arr)-2] #the value you get if you win
-        con_score = 1.0
-        for i in range(len(arr)-1):
-            if arr[i] in hand and arr[i+1] in hand:
-                con_score*=penalty11
-            elif arr[i] not in hand and arr[i+1] not in hand:
+        con_score = 1.0 #a "constraint score" giving an approximate idea of how likely you are to get it
+        for i in range(1, n):
+            if i < n-1 and arr[i] in hand and arr[i-1] not in hand and arr[i+1] not in hand:
+                con_score*=penalty010
+            elif arr[i] not in hand and arr[i-1] not in hand:
                 con_score*=penalty00
+            elif arr[i] in hand and arr[i-1] in hand:
+                pass #do not need to penalize this, a sure thing!
             else:
                 con_score*=penalty01
         return con_score * win_val + (1-con_score) * (-1)
@@ -211,19 +214,24 @@ class Player:
                     dist_diff = (where[cc[0][i+1]] - where[cc[0][i]])%12
                     if not (dist_diff <= 5 and dist_diff != 0):
                         failed = True
+                        break
                 if not failed:
                     total_ev += points[len(cc[1]) - 2]
                 else:
                     total_ev -= 1
                 continue
-
+            
+            failed = False
             #checks each subconstraint individually to see if already violated
             for i in range(len(cc[0])-1):
                 if cc[1][i] == '2' and cc[1][i+1] == '2':
                     dist_diff = (where[cc[0][i+1]] - where[cc[0][i]])%12
                     if not (dist_diff <=5 and dist_diff != 0): #at least one of the constraints was invalid
                         total_ev -=1
-                        continue
+                        failed = True
+                        break
+            if failed:
+                continue
             
             #no constraint should be already violated past this point!
 
@@ -235,7 +243,11 @@ class Player:
                 num_open_slots-=1
             #if 0 letters needed, then ways_to_fill defaults to 1
 
-            successes = self.count_successes(state, cc, where, open_slots) #call into recursive function
+
+
+
+            #just need to get an accurate guess of p_satisfy!!!
+            successes = self.count_successes(state, cc, where, open_slots) #call into recursive function, very costly
             p_satisfy = max(successes / ways_to_fill, 1) #in case count_successes breaks and returns something crazy
             #print(successes/ways_to_fill)
             ev = p_satisfy*points[len(cc[1]) - 2] - (1-p_satisfy)
@@ -266,7 +278,7 @@ class Player:
                 checklist.add(i % 12)
         return checklist
 
-
+    #this method is too slow!!!
     def count_successes(self, state, conv_const, where, open_slots):
         total_successes = 0
 

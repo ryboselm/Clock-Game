@@ -208,7 +208,6 @@ class  clockGame():
             self.scores[i] = score
         if self.use_gui:
             self.clockapp_instance["scores"] = self.scores
-        print(str(self.scores[0])) #the score of player 1
         #print("Player 2 has score " + str(self.scores[1]))
         #print("Player 3 has score " + str(self.scores[2]))
         tie = False
@@ -216,6 +215,7 @@ class  clockGame():
         if self.scores[winner-1] == self.scores[(winner-2)%3] or self.scores[winner-1] == self.scores[(winner)%3]:
             tie = True
         #print("Congratulations Player "+str(winner)+" you are the winner!!!")
+        print(str(self.scores[0]) + " " + str(winner)) #the score of player 1 and who won
         unsatisfied_constraints = copy.deepcopy(self.constraints)
         for i_con in range(3):
             for j_con in range(len(self.satisfied_constraints[i_con])):
