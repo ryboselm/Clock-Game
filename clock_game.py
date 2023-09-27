@@ -307,7 +307,7 @@ class  clockGame():
         self.curr_state[hour] = letter
         self.curr_territory[hour] = player_number
         self.letter_position[letter] = [hour,player_number]
-        print("player " + str(player_number + 1) + " autoplayed letter "+ letter + " at hour "+ str(hour%12 if hour%12!=0 else 12))
+        #print("player " + str(player_number + 1) + " autoplayed letter "+ letter + " at hour "+ str(hour%12 if hour%12!=0 else 12))
         self.add_to_log(player_number, letter, hour)
         
 
