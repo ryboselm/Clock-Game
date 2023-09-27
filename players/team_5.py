@@ -22,9 +22,8 @@ class Player:
         self.rng = rng
         ### Player Parameters
 
-        self.EV_CUTOFF = 0.85 #Expected Value cutoff parameter
-        self.MAX_CONSTRAINTS = 8 #parameter for the maximum number of constraints we will choose to take.
-        self.CHOOSE_PENALTIES = [0.2, 0.7, 0.9] #heuristic value for likelihood if both adjacent cards are missing from your hand, if one is missing, and if both are present, respectively
+        self.MAX_CONSTRAINTS = 15 #parameter for the maximum number of constraints we will choose to take.
+        self.CHOOSE_PENALTIES = [0.43, 0.17, 0.95] #heuristic value for likelihood if both adjacent cards are missing from your hand, if one is missing, and if both are present, respectively
 
     #def choose_discard(self, cards: list[str], constraints: list[str]):
     def choose_discard(self, cards, constraints):
@@ -83,19 +82,23 @@ class Player:
         return False
     
     #returns an expected value for how good a constraint is at the start of game
+    #returns an expected value for how good a constraint is at the start of game
     def eval_constraint(self, constraint, hand): #returns a number denoting the value of this constraint
-        penalty00 = self.CHOOSE_PENALTIES[0] #penalty if both adjacent cards are missing from your hand
-        penalty01 = self.CHOOSE_PENALTIES[1] #penalty if one adjacent card is missing from your hand
-        penalty11 = self.CHOOSE_PENALTIES[2] #penalty if both cards are present in your hand
+        penalty00 = self.CHOOSE_PENALTIES[0] #penalty if two adjacent cards are missing from your hand
+        penalty010 = self.CHOOSE_PENALTIES[1] #penalty if two cards are missing around a card you own like 010
+        penalty01 = self.CHOOSE_PENALTIES[2] #penalty if you have your card adjacent to a missing card (but it's not the 010 case)
         arr = constraint.split('<')
+        n = len(arr)
         scores = [1,3,6,12]
         win_val = scores[len(arr)-2] #the value you get if you win
-        con_score = 1.0
-        for i in range(len(arr)-1):
-            if arr[i] in hand and arr[i+1] in hand:
-                con_score*=penalty11
-            elif arr[i] not in hand and arr[i+1] not in hand:
+        con_score = 1.0 #a "constraint score" giving an approximate idea of how likely you are to get it
+        for i in range(1, n):
+            if i < n-1 and arr[i] in hand and arr[i-1] not in hand and arr[i+1] not in hand:
+                con_score*=penalty010
+            elif arr[i] not in hand and arr[i-1] not in hand:
                 con_score*=penalty00
+            elif arr[i] in hand and arr[i-1] in hand:
+                pass #do not need to penalize this, a sure thing!
             else:
                 con_score*=penalty01
         return con_score * win_val + (1-con_score) * (-1)
